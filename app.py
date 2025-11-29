@@ -19,80 +19,86 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- Custom CSS for Dark Dashboard Theme ---
-# This CSS overrides Streamlit's default styles to create a custom "Dark Mode" look
-# with orange accents, matching the user's requested design.
+# --- Custom CSS for Chess.com-like Theme ---
 st.markdown("""
 <style>
     /* Main Background */
     .stApp {
-        background-color: #0e1117;
-    }
-    
-    /* Sidebar Background and Border */
-    [data-testid="stSidebar"] {
-        background-color: #161b22;
-        border-right: 1px solid #30363d;
-    }
-    
-    /* Metric Values (Big Numbers) - Orange Accent */
-    [data-testid="stMetricValue"] {
-        font-size: 2rem;
-        color: #ff9f1c; 
-    }
-    
-    /* Headers (H1, H2, H3) - Light Gray */
-    h1, h2, h3 {
+        background-color: #262522; /* Chess.com Dark Background */
         color: #e6edf3;
     }
     
-    /* Tabs Styling */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 24px;
-    }
-    .stTabs [data-baseweb="tab"] {
-        height: 50px;
-        white-space: pre-wrap;
-        background-color: transparent;
-        border-radius: 4px 4px 0px 0px;
-        gap: 1px;
-        padding-top: 10px;
-        padding-bottom: 10px;
-        color: #8b949e;
-    }
-    .stTabs [aria-selected="true"] {
-        background-color: transparent;
-        color: #ff9f1c;
-        border-bottom: 2px solid #ff9f1c; /* Orange underline for active tab */
+    /* Sidebar */
+    [data-testid="stSidebar"] {
+        background-color: #21201d;
+        border-right: 1px solid #302e2b;
     }
     
-    /* Custom Container Styling (for Cards) */
-    .css-1r6slb0 {
-        background-color: #161b22;
-        border: 1px solid #30363d;
-        border-radius: 6px;
-        padding: 1rem;
+    /* Metrics/Cards */
+    div[data-testid="metric-container"] {
+        background-color: #302e2b;
+        border: 1px solid #403d39;
+        padding: 15px;
+        border-radius: 8px;
+        color: #fff;
+    }
+    
+    /* Metric Values */
+    [data-testid="stMetricValue"] {
+        font-size: 24px;
+        font-weight: bold;
+        color: #fff;
+    }
+    
+    /* Metric Labels */
+    [data-testid="stMetricLabel"] {
+        font-size: 14px;
+        color: #a7a6a2;
+    }
+    
+    /* Headers */
+    h1, h2, h3 {
+        color: #fff;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    }
+    
+    /* Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        background-color: #262522;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 40px;
+        background-color: transparent;
+        border: none;
+        color: #a7a6a2;
+        font-weight: 600;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #302e2b;
+        color: #fff;
+        border-bottom: 2px solid #81b64c; /* Green Accent */
+    }
+    
+    /* Custom Classes for Styling */
+    .profile-header {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 20px;
+        background-color: #302e2b;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    .profile-name {
+        font-size: 24px;
+        font-weight: bold;
+    }
+    .profile-flag {
+        font-size: 24px;
     }
 </style>
 """, unsafe_allow_html=True)
-
-# --- Title and Header ---
-st.title("♟️ Lichess Opening Insights")
-st.markdown("### Data-Driven Chess Coaching with AI Support")
-
-# --- Sidebar Configuration ---
-with st.sidebar:
-    st.header("Settings")
-    # Input for Lichess Username
-    username = st.text_input("Lichess Username", value="DrNykterstein")
-    # Slider for number of games to fetch
-    max_games = st.slider("Games to Analyze", 50, 500, 100)
-    
-    # Main Action Button
-    analyze_btn = st.button("Analyze Games", type="primary")
-    
-    st.markdown("---")
-    st.markdown("Created by: Brian & Harold")
 
 # --- Main Application Logic ---
 if analyze_btn:
@@ -105,7 +111,6 @@ if analyze_btn:
         st.error(f"No games found for user '{username}' or API error.")
     else:
         # --- Data Processing ---
-        # Convert raw game data to DataFrame and calculate stats
         df = process_games(games, username)
         opening_stats = get_opening_stats(df)
         
@@ -124,12 +129,20 @@ if analyze_btn:
             'win_rate': win_rate
         }
         
-        # --- Dashboard Metrics Grid ---
-        # Display key stats in a 4-column layout
+        # --- Header Section (Profile) ---
+        st.markdown(f"""
+        <div class="profile-header">
+            <div class="profile-flag">♟️</div>
+            <div class="profile-name">{username}</div>
+            <div style="color: #a7a6a2;">🇺🇸</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # --- Summary Cards ---
         col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Total Games", total_games)
-        col2.metric("Current Rating", current_rating)
-        col3.metric("Win Rate", f"{win_rate:.1%}")
+        col1.metric("Games Played", f"{total_games}")
+        col2.metric("Current Rating", f"{current_rating}")
+        col3.metric("Win Rate", f"{win_rate:.1%}", delta=f"{win_count} Won")
         col4.metric("Top Opening", opening_stats.iloc[0]['opening_name'] if not opening_stats.empty else "N/A")
         
         st.divider()
