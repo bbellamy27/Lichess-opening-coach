@@ -23,8 +23,9 @@ class LLMClient:
         else:
             # Configure the Gemini API with the provided key
             genai.configure(api_key=self.api_key)
-            # Use the 'gemini-1.5-flash' model for faster responses
-            self.model = genai.GenerativeModel('gemini-1.5-flash')
+            # Try to use the 'gemini-1.5-flash' model, fallback to 'gemini-pro' if needed
+            self.model_name = 'gemini-1.5-flash'
+            self.model = genai.GenerativeModel(self.model_name)
 
     def generate_coaching_report(self, player_stats, opening_stats):
         """
@@ -44,7 +45,6 @@ class LLMClient:
         top_openings = opening_stats.head(5).to_string(index=False)
         
         # Construct the prompt for the LLM
-        # We provide context about the player and ask for specific advice sections
         prompt = f"""
         You are a Grandmaster Chess Coach. Analyze the following player statistics and generate a personalized coaching report.
         
@@ -72,4 +72,13 @@ class LLMClient:
             response = self.model.generate_content(prompt)
             return response.text
         except Exception as e:
+            # Fallback mechanism: If the first model fails, try 'gemini-pro'
+            if "404" in str(e) or "not found" in str(e).lower():
+                try:
+                    print("Retrying with 'gemini-pro' model...")
+                    fallback_model = genai.GenerativeModel('gemini-pro')
+                    response = fallback_model.generate_content(prompt)
+                    return response.text
+                except Exception as e2:
+                    return f"Error generating report (Fallback failed): {str(e2)}"
             return f"Error generating report: {str(e)}"

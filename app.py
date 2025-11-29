@@ -82,20 +82,11 @@ st.markdown("### Data-Driven Chess Coaching with AI Support")
 
 # --- Sidebar Configuration ---
 with st.sidebar:
-    st.header("Configuration")
+    st.header("Settings")
     # Input for Lichess Username
     username = st.text_input("Lichess Username", value="DrNykterstein")
     # Slider for number of games to fetch
     max_games = st.slider("Games to Analyze", 50, 500, 100)
-    
-    st.divider()
-    
-    st.header("LLM Settings")
-    # Securely handle the Google API Key
-    default_key = os.getenv("GOOGLE_API_KEY", "")
-    api_key_input = st.text_input("Google API Key", value=default_key, type="password", help="Get one from Google AI Studio")
-    if api_key_input:
-        os.environ["GOOGLE_API_KEY"] = api_key_input
     
     # Main Action Button
     analyze_btn = st.button("Analyze Games", type="primary")
