@@ -510,7 +510,7 @@ def calculate_time_stats(games, username, time_control="overall", pacing_label="
                 reason = f"Typical '{pacing_label.split()[0]}' behavior. You are overthinking."
                 tip = "Set a strict time limit per move. Good enough is better than perfect."
                 
-        return f"**{status}**<br>Reason: {reason}<br>Tip: {tip}<br>Target: {low}-{high}s"
+        return f"**{status}**\n\nReason: {reason}\n\nTip: {tip}\n\nTarget: {low}-{high}s"
 
     # Define Targets based on TC
     targets = {
