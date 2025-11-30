@@ -27,13 +27,16 @@ class LLMClient:
             self.model_name = 'gemini-2.0-flash'
             self.model = genai.GenerativeModel(self.model_name)
 
-    def generate_coaching_report(self, player_stats, opening_stats):
+    def generate_coaching_report(self, player_stats, opening_stats, risk_data=None, pacing_data=None, time_stats=None):
         """
         Generate a personalized coaching report using the LLM.
         
         Args:
-            player_stats (dict): Dictionary containing player metrics (rating, win rate, etc.).
+            player_stats (dict): Dictionary containing player metrics.
             opening_stats (pd.DataFrame): DataFrame of opening statistics.
+            risk_data (dict): Volatility metrics (label, score, etc.).
+            pacing_data (dict): Pacing metrics (label, avg_moves, etc.).
+            time_stats (dict): Time management stats (opening/mid/end avg times).
             
         Returns:
             str: The generated coaching report in Markdown format.
@@ -41,8 +44,20 @@ class LLMClient:
         if not self.model:
             return "Error: Google API Key not configured."
             
-        # Prepare the top openings data for the prompt
+        # Prepare data strings
         top_openings = opening_stats.head(5).to_string(index=False)
+        
+        risk_info = f"- Style: {risk_data.get('label', 'N/A')} (Score: {risk_data.get('score', 0)}/10)" if risk_data else ""
+        pacing_info = f"- Pacing Archetype: {pacing_data.get('label', 'N/A')} (Avg {pacing_data.get('avg_moves', 0)} moves)" if pacing_data else ""
+        
+        time_info = ""
+        if time_stats:
+            time_info = f"""
+        Time Management:
+        - Opening: {time_stats.get('opening_avg')}s/move ({time_stats.get('opening_feedback', '').split('<br>')[0].replace('**', '')})
+        - Middlegame: {time_stats.get('middlegame_avg')}s/move ({time_stats.get('middlegame_feedback', '').split('<br>')[0].replace('**', '')})
+        - Endgame: {time_stats.get('endgame_avg')}s/move ({time_stats.get('endgame_feedback', '').split('<br>')[0].replace('**', '')})
+            """
         
         # Construct the prompt for the LLM
         prompt = f"""
@@ -53,16 +68,19 @@ class LLMClient:
         - Current Rating: {player_stats.get('current_rating')}
         - Win Rate: {player_stats.get('win_rate'):.1%}
         - Total Games Analyzed: {player_stats.get('total_games')}
+        {risk_info}
+        {pacing_info}
+        {time_info}
         
         Top Openings Played:
         {top_openings}
         
         Please provide a report with the following sections:
-        1. **Playstyle Analysis**: Based on the openings and win rate, describe their style (e.g., aggressive, positional).
-        2. **Strengths**: What are they doing well? (Look at high win rates).
-        3. **Weaknesses**: What needs improvement? (Look at low win rates or high loss rates).
+        1. **Playstyle Analysis**: Incorporate their Risk Profile ({risk_data.get('label') if risk_data else 'N/A'}) and Pacing Archetype ({pacing_data.get('label') if pacing_data else 'N/A'}). Are they a "Berserker" or a "Grinder"? Do they play too fast?
+        2. **Strengths**: What are they doing well? (Look at high win rates and good time management).
+        3. **Weaknesses**: What needs improvement? (Look at low win rates, time trouble, or reckless speed).
         4. **Opening Recommendations**: Suggest 1-2 new openings or variations to try based on their style.
-        5. **Training Plan**: A brief bulleted list of what they should focus on next.
+        5. **Training Plan**: A brief bulleted list of what they should focus on next (e.g., "Slow down in the opening", "Study endgames").
         
         Keep the tone encouraging but professional. Use Markdown formatting.
         """

@@ -11,11 +11,23 @@ class PuterClient:
         self.url = "https://text.pollinations.ai/"
         self.model = "openai" # Uses their default best available model
 
-    def generate_coaching_report(self, player_stats, opening_stats):
+    def generate_coaching_report(self, player_stats, opening_stats, risk_data=None, pacing_data=None, time_stats=None):
         """
         Generate a personalized coaching report using Free AI.
         """
         top_openings = opening_stats.head(5).to_string(index=False)
+        
+        risk_info = f"- Style: {risk_data.get('label', 'N/A')} (Score: {risk_data.get('score', 0)}/10)" if risk_data else ""
+        pacing_info = f"- Pacing Archetype: {pacing_data.get('label', 'N/A')} (Avg {pacing_data.get('avg_moves', 0)} moves)" if pacing_data else ""
+        
+        time_info = ""
+        if time_stats:
+            time_info = f"""
+        Time Management:
+        - Opening: {time_stats.get('opening_avg')}s/move ({time_stats.get('opening_feedback', '').split('<br>')[0].replace('**', '')})
+        - Middlegame: {time_stats.get('middlegame_avg')}s/move ({time_stats.get('middlegame_feedback', '').split('<br>')[0].replace('**', '')})
+        - Endgame: {time_stats.get('endgame_avg')}s/move ({time_stats.get('endgame_feedback', '').split('<br>')[0].replace('**', '')})
+            """
         
         prompt = f"""
         You are a Chess Coach. Analyze these stats:
@@ -24,12 +36,15 @@ class PuterClient:
         Rating: {player_stats.get('current_rating')}
         Win Rate: {player_stats.get('win_rate'):.1%}
         Total Games: {player_stats.get('total_games')}
+        {risk_info}
+        {pacing_info}
+        {time_info}
         
         Top Openings:
         {top_openings}
         
         Provide a brief report with:
-        1. Playstyle
+        1. Playstyle (Mention Risk & Pacing)
         2. Strengths
         3. Weaknesses
         4. Recommendations
