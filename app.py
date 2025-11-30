@@ -411,7 +411,13 @@ else:
                 st.markdown("### ⏱️ Time Management Analysis")
                 
                 if 'games' in locals() and games:
-                    time_stats = calculate_time_stats(games, username)
+                    # Filter raw games list based on selected category to ensure Time Analysis matches the filter
+                    if rating_category != "Overall":
+                        filtered_games = [g for g in games if g.get('speed') == rating_category.lower()]
+                    else:
+                        filtered_games = games
+                        
+                    time_stats = calculate_time_stats(filtered_games, username)
                     
                     t_col1, t_col2, t_col3 = st.columns(3)
                     with t_col1:
