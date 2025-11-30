@@ -346,10 +346,10 @@ else:
                     fig_gauge = go.Figure(go.Indicator(
                         mode = "gauge+number",
                         value = risk_data['score'],
-                        title = {'text': f"Volatility: {risk_data['label']}", 'font': {'size': 16}},
+                        title = {'text': f"Volatility: {risk_data['label']}", 'font': {'size': 20}},
                         gauge = {
                             'axis': {'range': [0, 10], 'tickwidth': 1, 'tickcolor': "white"},
-                            'bar': {'color': "white", 'thickness': 0.3}, # Thinner bar, white for contrast
+                            'bar': {'color': "white", 'thickness': 0.2}, # Thinner bar to avoid overlap
                             'bgcolor': "rgba(0,0,0,0)",
                             'borderwidth': 2,
                             'bordercolor': "white",
@@ -364,12 +364,12 @@ else:
                                 'value': risk_data['score']
                             }
                         },
-                        number = {'font': {'size': 40, 'color': "white"}} # Make number big and visible
+                        number = {'font': {'size': 50, 'color': "white"}} # Bigger number, but better spacing
                     ))
                     # Adjust layout to prevent overlapping
                     fig_gauge.update_layout(
-                        height=220, 
-                        margin=dict(l=30, r=30, t=50, b=10),
+                        height=300, # Increased height to give more room
+                        margin=dict(l=40, r=40, t=80, b=40), # More breathing room
                         paper_bgcolor="rgba(0,0,0,0)",
                         font={'color': "white"}
                     )
