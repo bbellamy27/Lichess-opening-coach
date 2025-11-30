@@ -530,7 +530,7 @@ else:
                             </div>
                             <p style="margin-top: 10px; font-size: 0.9em; font-style: italic; color: #aaa;">"{feedback}"</p>
                             <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #444;">
-                                <p style="margin:0; font-size: 0.85em; color: #fff;">💡 <b>Next Step:</b> {advice}</p>
+                                <p style="margin:0; font-size: 0.85em; color: #fff;">💡 {advice}</p>
                             </div>
                         </div>
                         """
