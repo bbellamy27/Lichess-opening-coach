@@ -156,6 +156,18 @@ if app_mode == "🏠 Home / Analyzer":
                 st.session_state['game_data'] = df
                 st.session_state['opening_stats'] = opening_stats
                 st.session_state['player_stats'] = player_stats
+                
+                # --- Generate Context for Chatbot ---
+                top_openings_str = ", ".join(opening_stats.head(3)['opening_name'].tolist())
+                context_str = (
+                    f"User: {username}\n"
+                    f"Rating: {current_rating}\n"
+                    f"Win Rate: {win_rate:.1%}\n"
+                    f"Total Games: {total_games}\n"
+                    f"Top Openings: {top_openings_str}"
+                )
+                st.session_state['chat_context'] = context_str
+                
                 st.success(f"Successfully loaded {len(df)} games!")
             else:
                 st.error("No games found or API error.")
@@ -286,13 +298,16 @@ with st.sidebar:
             # Generate Response
             with st.chat_message("assistant"):
                 with st.spinner("Thinking..."):
+                    # Get Context
+                    context = st.session_state.get('chat_context')
+                    
                     # Logic: Use Gemini if Key exists, else Puter
                     if os.getenv("GOOGLE_API_KEY"):
                         client = LLMClient()
-                        response = client.chat(st.session_state.messages)
+                        response = client.chat(st.session_state.messages, context=context)
                     else:
                         client = PuterClient()
-                        response = client.chat(st.session_state.messages)
+                        response = client.chat(st.session_state.messages, context=context)
                     
                     st.markdown(response)
             

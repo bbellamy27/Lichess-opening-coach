@@ -74,12 +74,13 @@ class LLMClient:
         except Exception as e:
             return f"Error generating report: {str(e)}"
 
-    def chat(self, messages):
+    def chat(self, messages, context=None):
         """
         Send a chat history to Gemini and get a response.
         
         Args:
             messages (list): List of message dicts [{'role': 'user', 'content': '...'}, ...]
+            context (str): Optional context string about the user.
             
         Returns:
             str: The assistant's response.
@@ -96,11 +97,13 @@ class LLMClient:
                 role = "user" if msg["role"] == "user" else "model"
                 if msg["role"] == "system":
                     # Prepend system prompt to the first user message or handle separately
-                    # For simplicity, we'll skip system prompt in history for now or handle it differently
                     continue
                 
                 if role == "user":
                     last_user_message = msg["content"]
+                    # Inject context into the latest user message if provided
+                    if context and msg == messages[-1]:
+                        last_user_message = f"[Context: {context}]\n\n{last_user_message}"
                 else:
                     history.append({"role": "user", "parts": [last_user_message]}) # Gemini expects user before model
                     history.append({"role": "model", "parts": [msg["content"]]})

@@ -71,25 +71,31 @@ class PuterClient:
         except Exception as e:
             return f"⚠️ Error generating report with Llama: {e}"
 
-    def chat(self, messages):
+    def chat(self, messages, context=None):
         """
         Send a chat history to Llama 3.1 and get a response.
         
         Args:
             messages (list): List of message dicts [{'role': 'user', 'content': '...'}, ...]
+            context (str): Optional context string about the user.
             
         Returns:
             str: The assistant's response.
         """
         # Add system prompt if not present at the start
+        system_content = (
+            "You are 'Coach', a friendly chess coach and study assistant. "
+            "You explain concepts clearly, give practical improvement advice, "
+            "and stay supportive. You can answer chess questions, study plans, "
+            "emotions, mindset, or strategy. Always be helpful and positive."
+        )
+        
+        if context:
+            system_content += f"\n\nCURRENT USER DATA:\n{context}\nUse this data to personalize your advice."
+
         system_prompt = {
             "role": "system", 
-            "content": (
-                "You are 'Coach', a friendly chess coach and study assistant. "
-                "You explain concepts clearly, give practical improvement advice, "
-                "and stay supportive. You can answer chess questions, study plans, "
-                "emotions, mindset, or strategy. Always be helpful and positive."
-            )
+            "content": system_content
         }
         
         # Create a copy to avoid modifying the original list in session state
