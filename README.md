@@ -9,7 +9,7 @@ This Streamlit web application analyzes a chess player’s recent games from Lic
 
 ## Features
 *   **Data Acquisition**: Fetches real-time game data from the Lichess API.
-*   **EDA**: Visualizes win rates, rating trends, and opening performance.
+*   **EDA**: Visualizes win rates, rating trends, opening performance, and correlation heatmaps.
 *   **AI Coaching**: Uses Google Gemini to analyze your style and recommend new openings.
 *   **Interactive UI**: Built with Streamlit for a smooth user experience.
 
