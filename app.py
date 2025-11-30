@@ -232,9 +232,23 @@ if app_mode == "🏠 Home / Analyzer":
         """, unsafe_allow_html=True)
         
         # --- Summary Cards ---
+        # Rating Selector
+        rating_category = st.selectbox("Select Rating Category", ["Overall", "Rapid", "Blitz", "Classical", "Bullet"], index=0)
+        
+        # Calculate Rating based on selection
+        if rating_category == "Overall":
+            display_rating = player_stats['current_rating']
+        else:
+            # Filter by speed (lowercase)
+            tc_df = df[df['speed'] == rating_category.lower()]
+            if not tc_df.empty:
+                display_rating = tc_df.iloc[0]['user_rating']
+            else:
+                display_rating = "N/A"
+
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("Games Played", f"{player_stats['total_games']}")
-        col2.metric("Current Rating", f"{player_stats['current_rating']}")
+        col2.metric(f"{rating_category} Rating", f"{display_rating}")
         col3.metric("Win Rate", f"{player_stats['win_rate']:.1%}", delta=f"{len(df[df['result'] == 'Win'])} Won")
         col4.metric("Top Opening", opening_stats.iloc[0]['opening_name'] if not opening_stats.empty else "N/A")
         
