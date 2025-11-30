@@ -72,7 +72,6 @@ class LLMClient:
             response = self.model.generate_content(prompt)
             return response.text
         except Exception as e:
-        except Exception as e:
             return f"Error generating report: {str(e)}"
 
     def chat(self, messages):
@@ -113,6 +112,5 @@ class LLMClient:
             response = chat.send_message(last_user_message)
             return response.text
             
-        except Exception as e:
         except Exception as e:
             return f"Error with Gemini Chat: {str(e)}"
