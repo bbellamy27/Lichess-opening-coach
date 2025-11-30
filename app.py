@@ -169,13 +169,20 @@ if app_mode == "🏠 Home / Analyzer":
                 st.session_state['player_stats'] = player_stats
                 
                 # --- Generate Context for Chatbot ---
-                top_openings_str = ", ".join(opening_stats.head(3)['opening_name'].tolist())
+                # Format top 5 openings with detailed stats
+                top_openings_details = []
+                for index, row in opening_stats.head(5).iterrows():
+                    details = f"- {row['opening_name']}: {row['games']} games ({row['wins']}W-{row['losses']}L-{row['draws']}D), Win Rate: {row['win_rate']:.1%}"
+                    top_openings_details.append(details)
+                
+                top_openings_str = "\n".join(top_openings_details)
+                
                 context_str = (
                     f"User: {username}\n"
                     f"Rating: {current_rating}\n"
                     f"Win Rate: {win_rate:.1%}\n"
                     f"Total Games: {total_games}\n"
-                    f"Top Openings: {top_openings_str}"
+                    f"Top Openings Played:\n{top_openings_str}"
                 )
                 st.session_state['chat_context'] = context_str
                 
