@@ -341,14 +341,38 @@ else:
                         c2.metric("Win Rate", f"{tc_rate:.1%}")
                         c3.metric("Games", tc_games)
                         
-                        st.markdown("#### Top Openings")
-                        tc_openings = get_opening_stats(df_tc).head(5)
-                        if not tc_openings.empty:
-                            tc_display = tc_openings.copy()
-                            tc_display['avg_rating'] = tc_display['avg_rating'].fillna(0).astype(int)
-                            tc_display['win_rate'] = tc_display['win_rate'].apply(lambda x: f"{x:.1%}")
-                            tc_display.columns = ['Opening Name', 'Games Played', 'Wins', 'Draws', 'Losses', 'Average Rating', 'Win Rate']
-                            st.dataframe(tc_display, use_container_width=True)
+                        st.markdown("#### Opening Performance")
+                        
+                        # Calculate Stats
+                        tc_stats = get_opening_stats(df_tc)
+                        
+                        if not tc_stats.empty:
+                            # Top Openings (Most Played)
+                            top_openings = tc_stats.head(5).copy()
+                            
+                            # Worst Openings (Lowest Win Rate, min 5 games)
+                            worst_openings = tc_stats[tc_stats['games'] >= 5].sort_values('win_rate', ascending=True).head(5).copy()
+                            
+                            col_top, col_worst = st.columns(2)
+                            
+                            with col_top:
+                                st.caption("🏆 Top Openings (Most Played)")
+                                top_display = top_openings.copy()
+                                top_display['avg_rating'] = top_display['avg_rating'].fillna(0).astype(int)
+                                top_display['win_rate'] = top_display['win_rate'].apply(lambda x: f"{x:.1%}")
+                                top_display.columns = ['Opening', 'Games', 'Wins', 'Draws', 'Losses', 'Avg Rating', 'Win Rate']
+                                st.dataframe(top_display[['Opening', 'Games', 'Win Rate']], use_container_width=True)
+                                
+                            with col_worst:
+                                st.caption("📉 Worst Openings (Lowest Win Rate, min 5 games)")
+                                if not worst_openings.empty:
+                                    worst_display = worst_openings.copy()
+                                    worst_display['avg_rating'] = worst_display['avg_rating'].fillna(0).astype(int)
+                                    worst_display['win_rate'] = worst_display['win_rate'].apply(lambda x: f"{x:.1%}")
+                                    worst_display.columns = ['Opening', 'Games', 'Wins', 'Draws', 'Losses', 'Avg Rating', 'Win Rate']
+                                    st.dataframe(worst_display[['Opening', 'Games', 'Win Rate']], use_container_width=True)
+                                else:
+                                    st.info("No openings with >5 games to determine worst performance.")
                         else:
                             st.info("No opening stats available.")
                     else:
