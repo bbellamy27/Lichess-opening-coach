@@ -72,11 +72,14 @@ class PuterClient:
         
         for msg in messages:
             if msg["role"] != "system":
-                full_messages.append(msg)
+                # Ensure content is a string
+                content = str(msg.get("content", ""))
+                full_messages.append({"role": msg["role"], "content": content})
 
         payload = {
             "messages": full_messages,
-            "model": self.model
+            "model": self.model,
+            "jsonMode": False # Explicitly disable JSON mode to avoid 400s on some endpoints
         }
         
         headers = {"Content-Type": "application/json"}
@@ -86,6 +89,23 @@ class PuterClient:
             response.raise_for_status()
             return response.text
         except Exception as e:
+            # Fallback for 400 errors (often due to context length or format)
+            if "400" in str(e):
+                try:
+                    # Retry with a simpler payload (just the last message)
+                    last_msg = messages[-1]["content"]
+                    simple_payload = {
+                        "messages": [
+                            {"role": "system", "content": "You are a helpful chess coach."},
+                            {"role": "user", "content": f"Context: {context}\n\nQuestion: {last_msg}"}
+                        ],
+                        "model": self.model
+                    }
+                    response = requests.post(self.url, headers=headers, json=simple_payload)
+                    response.raise_for_status()
+                    return response.text
+                except Exception as e2:
+                    return f"⚠️ Error (Retry Failed): {e2}"
             return f"⚠️ Error contacting Coach: {e}"
 
 if __name__ == "__main__":

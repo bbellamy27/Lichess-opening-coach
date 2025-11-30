@@ -169,20 +169,35 @@ if app_mode == "🏠 Home / Analyzer":
                 st.session_state['player_stats'] = player_stats
                 
                 # --- Generate Context for Chatbot ---
-                # Format top 5 openings with detailed stats
-                top_openings_details = []
-                for index, row in opening_stats.head(5).iterrows():
-                    details = f"- {row['opening_name']}: {row['games']} games ({row['wins']}W-{row['losses']}L-{row['draws']}D), Win Rate: {row['win_rate']:.1%}"
-                    top_openings_details.append(details)
+                # --- Generate Context for Chatbot ---
+                # Split data by color
+                df_white = df[df['user_color'] == 'white']
+                df_black = df[df['user_color'] == 'black']
                 
-                top_openings_str = "\n".join(top_openings_details)
+                stats_white = get_opening_stats(df_white)
+                stats_black = get_opening_stats(df_black)
+                
+                # Format White Openings
+                white_details = []
+                if not stats_white.empty:
+                    for index, row in stats_white.head(3).iterrows():
+                        white_details.append(f"- {row['opening_name']}: {row['games']} games ({row['wins']}W-{row['losses']}L-{row['draws']}D), Win Rate: {row['win_rate']:.1%}")
+                white_str = "\n".join(white_details) if white_details else "No games played as White."
+
+                # Format Black Openings
+                black_details = []
+                if not stats_black.empty:
+                    for index, row in stats_black.head(3).iterrows():
+                        black_details.append(f"- {row['opening_name']}: {row['games']} games ({row['wins']}W-{row['losses']}L-{row['draws']}D), Win Rate: {row['win_rate']:.1%}")
+                black_str = "\n".join(black_details) if black_details else "No games played as Black."
                 
                 context_str = (
                     f"User: {username}\n"
                     f"Rating: {current_rating}\n"
                     f"Win Rate: {win_rate:.1%}\n"
-                    f"Total Games: {total_games}\n"
-                    f"Top Openings Played:\n{top_openings_str}"
+                    f"Total Games: {total_games}\n\n"
+                    f"TOP OPENINGS AS WHITE:\n{white_str}\n\n"
+                    f"TOP OPENINGS AS BLACK:\n{black_str}"
                 )
                 st.session_state['chat_context'] = context_str
                 
