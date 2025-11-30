@@ -287,14 +287,17 @@ if app_mode == "🏠 Home / Analyzer":
             st.dataframe(display_df, use_container_width=True)
             
             st.subheader("Opening Statistics")
-            # Prepare Opening Stats for Display
-            display_stats = opening_stats.copy()
-            display_stats['avg_rating'] = display_stats['avg_rating'].fillna(0).astype(int)
-            display_stats['win_rate'] = display_stats['win_rate'].apply(lambda x: f"{x:.1%}")
-            
-            # Rename columns
-            display_stats.columns = ['Opening Name', 'Games Played', 'Wins', 'Draws', 'Losses', 'Average Rating', 'Win Rate']
-            st.dataframe(display_stats, use_container_width=True)
+            if not opening_stats.empty:
+                # Prepare Opening Stats for Display
+                display_stats = opening_stats.copy()
+                display_stats['avg_rating'] = display_stats['avg_rating'].fillna(0).astype(int)
+                display_stats['win_rate'] = display_stats['win_rate'].apply(lambda x: f"{x:.1%}")
+                
+                # Rename columns
+                display_stats.columns = ['Opening Name', 'Games Played', 'Wins', 'Draws', 'Losses', 'Average Rating', 'Win Rate']
+                st.dataframe(display_stats, use_container_width=True)
+            else:
+                st.info("No opening statistics available for this selection.")
             
             st.divider()
             st.subheader("Stats by Time Control")
