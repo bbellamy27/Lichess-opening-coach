@@ -173,16 +173,15 @@ def calculate_risk_metrics(df):
         }
         
     # 1. Draw Rate Factor (0-10)
-    # 50% draw rate -> Score 0 (Super Solid)
-    # 0% draw rate -> Score 10 (All or Nothing)
+    # Online chess has fewer draws. We calibrate so ~10% draw rate is "Balanced" (Score 5).
+    # >20% draw rate -> Score 0 (Solid)
+    # <2% draw rate -> Score 9-10 (Berserker)
     total_games = len(df)
     draws = len(df[df['result'] == 'Draw'])
     draw_rate = draws / total_games if total_games > 0 else 0
     
-    # Invert draw rate: 0.5 -> 0, 0.0 -> 1.0
-    # Formula: (1 - (draw_rate * 2)) * 10. Clamped 0-10.
-    # If draw rate > 50%, score is 0.
-    draw_factor = max(0, (1 - (draw_rate * 2))) * 10
+    # Formula: (1 - (draw_rate * 5)) * 10. Clamped 0-10.
+    draw_factor = max(0, (1 - (draw_rate * 5))) * 10
     
     # 2. Game Length Factor (0-10)
     # Avg 20 moves -> Score 10 (Quick kills/deaths)
@@ -191,12 +190,10 @@ def calculate_risk_metrics(df):
     avg_moves = avg_ply / 2
     
     # Formula: (60 - avg_moves) / 4. Clamped 0-10.
-    # 20 moves -> (40)/4 = 10
-    # 60 moves -> 0
     length_factor = max(0, min(10, (60 - avg_moves) / 4))
     
-    # Weighted Average: 60% Draw Rate, 40% Length
-    risk_score = (draw_factor * 0.6) + (length_factor * 0.4)
+    # Weighted Average: 50% Draw Rate, 50% Length
+    risk_score = (draw_factor * 0.5) + (length_factor * 0.5)
     risk_score = round(max(1, min(10, risk_score)), 1)
     
     # Determine Label and Feedback
