@@ -451,7 +451,10 @@ else:
                 with r_col3:
                     st.info(f"**Risk Feedback:** {risk_data['feedback']}")
                     st.warning(f"**Pacing Feedback:** {pacing_data['feedback']}")
-                    st.success(f"**Improvement:** {risk_data['improvement']}")
+                    
+                    st.markdown("---")
+                    st.success(f"**🎯 Pacing Advice:** {pacing_data['improvement']}")
+                    st.success(f"**🛡️ Risk Advice:** {risk_data['improvement']}")
                 
                 st.divider()
 

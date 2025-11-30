@@ -254,24 +254,41 @@ def calculate_pacing_metrics(df, time_control):
     lower, upper = thresholds.get(tc, (20, 60))
     
     if avg_moves < lower:
-        label = "Too Fast 🐇"
-        color = "#FF4B4B" # Streamlit Red
-        feedback = f"You are averaging only {avg_moves} moves per game. You might be resigning too early or playing too recklessly."
+        if win_rate > 0.60:
+            label = "Blitzkrieg ⚡"
+            color = "#00C853" # Green
+            feedback = f"Short games ({avg_moves} moves), but you're winning {win_rate:.0%} of them! You crush opponents quickly."
+            improvement = "Your aggression is working. Work on 'prophylaxis' to prevent counterplay when you can't win immediately."
+        else:
+            label = "Too Fast 🐇"
+            color = "#FF4B4B" # Red
+            feedback = f"You average only {avg_moves} moves. You might be playing too recklessly or resigning early."
+            improvement = "Sit on your hands! Force yourself to calculate one extra variation before moving. Stop resigning early."
+            
     elif avg_moves > upper:
-        label = "Too Slow 🐢"
-        color = "#1E88E5" # Vibrant Blue
-        feedback = f"You are averaging {avg_moves} moves per game. Your games are very long grinds. Work on converting advantages faster."
+        if win_rate > 0.60:
+            label = "Marathon Master 🏃"
+            color = "#00C853" # Green
+            feedback = f"Long games ({avg_moves} moves), but you win {win_rate:.0%} of them! You excel in the endgame."
+            improvement = "Your stamina is great. Study sharper openings to potentially win games earlier and save energy."
+        else:
+            label = "Too Slow 🐢"
+            color = "#1E88E5" # Blue
+            feedback = f"You average {avg_moves} moves. Your games are long grinds, but you aren't converting enough of them."
+            improvement = "Work on 'conversion' techniques. When you have an advantage, look for the most forcing path to simplify and win."
+            
     else:
         label = "Just Right 🎯"
-        color = "#00C853" # Vibrant Green
+        color = "#00C853" # Green
         feedback = f"Your average game length ({avg_moves} moves) is typical for {tc} chess. Good pacing!"
-        
+        improvement = "Your pacing is solid. Focus on analyzing your 'critical moments'—where the game could have gone either way."
 
     return {
         'label': label,
         'color': color,
         'avg_moves': avg_moves,
-        'feedback': feedback
+        'feedback': feedback,
+        'improvement': improvement
     }
 
 import chess
