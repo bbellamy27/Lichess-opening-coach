@@ -592,8 +592,6 @@ else:
             if not df.empty:
                 st.subheader("Deep Dive Analytics")
                 
-
-
                 col1, col2 = st.columns(2)
                 with col1:
                     # Heatmap of playing times
@@ -613,34 +611,38 @@ else:
         with tab4:
             st.subheader("🤖 Personalized Coaching Report")
             
-            # Calculate Analysis Metrics (ACPL, Blunders)
-            raw_games = st.session_state.get('raw_games')
-            analysis_stats = None
-            if raw_games:
-                if rating_category != "Overall":
-                    filtered_games_ai = [g for g in raw_games if g.get('speed') == rating_category.lower()]
-                else:
-                    filtered_games_ai = raw_games
-                analysis_stats = calculate_analysis_metrics(filtered_games_ai, username)
-
-            # Check for API Key based on provider
-            if ai_provider == "Google Gemini" and os.getenv("GOOGLE_API_KEY"):
-                with st.spinner("Generating insights with Gemini..."):
-                    llm = LLMClient()
-                    report = llm.generate_coaching_report(player_stats, opening_stats, risk_data, pacing_data, time_stats, analysis_stats)
-                    st.markdown(report)
-            elif ai_provider == "Groq (Llama 3)" and os.getenv("GROQ_API_KEY"):
-                with st.spinner("Generating insights with Groq (Llama 3)..."):
-                    llm = GroqClient()
-                    report = llm.generate_coaching_report(player_stats, opening_stats, risk_data, pacing_data, time_stats, analysis_stats)
-                    st.markdown(report)
-            elif ai_provider == "Free Llama (Default)":
-                 with st.spinner("Generating insights with Free Llama..."):
-                    llm = PuterClient()
-                    report = llm.generate_coaching_report(player_stats, opening_stats, risk_data, pacing_data, time_stats, analysis_stats)
-                    st.markdown(report)
+            # Check if we have enough data for AI
+            if risk_data is None or pacing_data is None:
+                st.warning(f"⚠️ Not enough data in **{rating_category}** mode to generate a full AI report. Please play more games or select 'Overall'.")
             else:
-                st.warning(f"⚠️ Please enter your {ai_provider} API Key in the sidebar.")
+                # Calculate Analysis Metrics (ACPL, Blunders)
+                raw_games = st.session_state.get('raw_games')
+                analysis_stats = None
+                if raw_games:
+                    if rating_category != "Overall":
+                        filtered_games_ai = [g for g in raw_games if g.get('speed') == rating_category.lower()]
+                    else:
+                        filtered_games_ai = raw_games
+                    analysis_stats = calculate_analysis_metrics(filtered_games_ai, username)
+
+                # Check for API Key based on provider
+                if ai_provider == "Google Gemini" and os.getenv("GOOGLE_API_KEY"):
+                    with st.spinner("Generating insights with Gemini..."):
+                        llm = LLMClient()
+                        report = llm.generate_coaching_report(player_stats, opening_stats, risk_data, pacing_data, time_stats, analysis_stats)
+                        st.markdown(report)
+                elif ai_provider == "Groq (Llama 3)" and os.getenv("GROQ_API_KEY"):
+                    with st.spinner("Generating insights with Groq (Llama 3)..."):
+                        llm = GroqClient()
+                        report = llm.generate_coaching_report(player_stats, opening_stats, risk_data, pacing_data, time_stats, analysis_stats)
+                        st.markdown(report)
+                elif ai_provider == "Free Llama (Default)":
+                     with st.spinner("Generating insights with Free Llama..."):
+                        llm = PuterClient()
+                        report = llm.generate_coaching_report(player_stats, opening_stats, risk_data, pacing_data, time_stats, analysis_stats)
+                        st.markdown(report)
+                else:
+                    st.warning(f"⚠️ Please enter your {ai_provider} API Key in the sidebar.")
     else:
         # Initial State Message
         st.info("👈 Enter a username and click 'Analyze Games' to start.")
