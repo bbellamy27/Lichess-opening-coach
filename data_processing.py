@@ -260,7 +260,7 @@ def calculate_risk_metrics(df):
     improvement = profile['improvement']
     mistakes = "N/A" # Deprecated in favor of specific improvement
     
-    explanation = "Calculated based on your Draw Rate (lower = higher volatility) and Average Game Length (shorter = higher volatility)."
+    explanation = "Based on how often you draw and how quickly your games end."
         
     return {
         'score': risk_score,
