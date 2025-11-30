@@ -33,7 +33,8 @@ class LichessClient:
             'max': max_games,      # Limit number of games
             'perfType': 'blitz,rapid,bullet,classical', # Filter by game types
             'opening': 'true',     # Include opening information
-            'rated': 'true'        # Only include rated games
+            'rated': 'true',       # Only include rated games
+            'clocks': 'true'       # Include clock data for move times
         }
         
         # Headers to specify the content type
