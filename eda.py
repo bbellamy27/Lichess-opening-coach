@@ -83,6 +83,28 @@ def plot_win_rate_by_opening(opening_stats, min_games=5):
         return None
         
     filtered = opening_stats[opening_stats['games'] >= min_games].head(15).copy()
+    
+    if filtered.empty:
+        # Return a blank figure with annotation
+        fig = go.Figure()
+        fig.update_layout(
+            xaxis={"visible": False},
+            yaxis={"visible": False},
+            annotations=[
+                {
+                    "text": "Not enough games played<br>(Must have at least 5 games per opening)",
+                    "xref": "paper",
+                    "yref": "paper",
+                    "showarrow": False,
+                    "font": {"size": 16, "color": COLORS['Text']}
+                }
+            ],
+            plot_bgcolor=COLORS['Background'],
+            paper_bgcolor=COLORS['Background'],
+            title=f"Win Rate by Opening (min {min_games} games)"
+        )
+        return fig
+
     filtered['win_rate_pct'] = filtered['win_rate'] * 100
     
     fig = px.bar(filtered, x='win_rate_pct', y='opening_name', orientation='h',
