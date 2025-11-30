@@ -106,20 +106,16 @@ st.markdown("""
 # --- Title and Header ---
 
 # --- Main Navigation ---
-st.sidebar.title("Navigation")
-# --- Main Navigation ---
-st.sidebar.title("Navigation")
-app_mode = st.sidebar.radio("Go to:", ["🏠 Home / Analyzer", "♟️ Best Move Calculator"])
+# (Navigation removed as there is only one mode now)
 
 # ==========================================
 # MODE 1: HOME / ANALYZER (Original App)
 # ==========================================
-if app_mode == "🏠 Home / Analyzer":
-    st.title("♟️ Lichess Opening Coach")
-    st.markdown("Analyze your games, find your weaknesses, and get AI coaching.")
+st.title("♟️ Lichess Opening Coach")
+st.markdown("Analyze your games, find your weaknesses, and get AI coaching.")
 
-    # Sidebar Inputs
-    st.sidebar.header("Settings")
+# Sidebar Inputs
+st.sidebar.header("Settings")
     username = st.sidebar.text_input("Lichess Username", value="DrNykterstein")
     num_games = st.sidebar.slider("Number of Games", min_value=10, max_value=500, value=100)
     
@@ -385,20 +381,7 @@ if app_mode == "🏠 Home / Analyzer":
         # Initial State Message
         st.info("👈 Enter a username and click 'Analyze Games' to start.")
 
-# ==========================================
-# MODE 2: BEST MOVE CALCULATOR (Engine)
-# ==========================================
-elif app_mode == "♟️ Best Move Calculator":
-    st.title("♟️ Best Move Calculator")
-    st.markdown("Enter a FEN position to get the best move from Stockfish.")
-    
-    fen_input = st.text_input("FEN String", value="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-    
-    if st.button("Calculate Best Move"):
-        with st.spinner("Thinking..."):
-            engine = EngineClient()
-            result = engine.get_best_move(fen_input)
-            st.success(result)
+# (Engine Mode Removed)
 
 # ==========================================
 # SIDEBAR CHATBOT (Persistent)
