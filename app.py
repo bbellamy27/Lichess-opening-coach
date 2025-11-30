@@ -103,33 +103,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- Title and Header ---
-st.title("♟️ Lichess Opening Insights")
-st.markdown("### Data-Driven Chess Coaching with AI Support")
 
-# --- Sidebar Configuration ---
-with st.sidebar:
-    st.header("Settings")
-    # Input for Lichess Username
-    username = st.text_input("Lichess Username", value="DrNykterstein")
-    # Slider for number of games to fetch
-    max_games = st.slider("Games to Analyze", 50, 500, 100)
-    
-    # Main Action Button
-    analyze_btn = st.button("Analyze Games", type="primary")
-    
-    st.markdown("---")
-    st.markdown("Created by: Brian & Harold")
-
-# --- Main Application Logic ---
-if analyze_btn:
-    # Show a spinner while fetching data
-    with st.spinner(f"Fetching games for {username}..."):
-        client = LichessClient()
-        games = client.get_user_games(username, max_games=max_games)
-        
-    if not games:
-        st.error(f"No games found for user '{username}' or API error.")
-    else:
 # --- Main Navigation ---
 st.sidebar.title("Navigation")
 app_mode = st.sidebar.radio("Go to:", ["🏠 Home / Analyzer", "♟️ Best Move Calculator", "💬 AI Chatbot"])
