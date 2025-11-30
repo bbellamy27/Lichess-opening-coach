@@ -177,25 +177,36 @@ if app_mode == "🏠 Home / Analyzer":
                 stats_white = get_opening_stats(df_white)
                 stats_black = get_opening_stats(df_black)
                 
-                # Format White Openings
-                white_details = []
-                if not stats_white.empty:
-                    for index, row in stats_white.head(3).iterrows():
-                        white_details.append(f"- {row['opening_name']}: {row['games']} games ({row['wins']}W-{row['losses']}L-{row['draws']}D), Win Rate: {row['win_rate']:.1%}")
-                white_str = "\n".join(white_details) if white_details else "No games played as White."
+                # Helper to format opening stats
+                def format_openings(stats, label):
+                    details = []
+                    if not stats.empty:
+                        for index, row in stats.head(3).iterrows():
+                            details.append(f"- {row['opening_name']}: {row['games']} games ({row['wins']}W-{row['losses']}L-{row['draws']}D), Win Rate: {row['win_rate']:.1%}")
+                    return "\n".join(details) if details else f"No {label} games played."
 
-                # Format Black Openings
-                black_details = []
-                if not stats_black.empty:
-                    for index, row in stats_black.head(3).iterrows():
-                        black_details.append(f"- {row['opening_name']}: {row['games']} games ({row['wins']}W-{row['losses']}L-{row['draws']}D), Win Rate: {row['win_rate']:.1%}")
-                black_str = "\n".join(black_details) if black_details else "No games played as Black."
+                white_str = format_openings(stats_white, "White")
+                black_str = format_openings(stats_black, "Black")
+                
+                # Split data by Time Control
+                time_controls = ['rapid', 'blitz', 'classical']
+                tc_context = ""
+                
+                for tc in time_controls:
+                    df_tc = df[df['speed'] == tc]
+                    if not df_tc.empty:
+                        tc_games = len(df_tc)
+                        tc_wins = len(df_tc[df_tc['result'] == 'Win'])
+                        tc_rate = tc_wins / tc_games if tc_games > 0 else 0
+                        tc_rating = df_tc.iloc[0]['user_rating']
+                        tc_context += f"\n{tc.capitalize()} Stats:\nRating: {tc_rating}, Win Rate: {tc_rate:.1%} ({tc_games} games)\n"
                 
                 context_str = (
                     f"User: {username}\n"
-                    f"Rating: {current_rating}\n"
-                    f"Win Rate: {win_rate:.1%}\n"
-                    f"Total Games: {total_games}\n\n"
+                    f"Overall Rating: {current_rating}\n"
+                    f"Overall Win Rate: {win_rate:.1%}\n"
+                    f"Total Games: {total_games}\n"
+                    f"{tc_context}\n"
                     f"TOP OPENINGS AS WHITE:\n{white_str}\n\n"
                     f"TOP OPENINGS AS BLACK:\n{black_str}"
                 )
@@ -249,6 +260,39 @@ if app_mode == "🏠 Home / Analyzer":
             # Rename columns
             display_stats.columns = ['Opening Name', 'Games Played', 'Wins', 'Draws', 'Losses', 'Average Rating', 'Win Rate']
             st.dataframe(display_stats, use_container_width=True)
+            
+            st.divider()
+            st.subheader("Stats by Time Control")
+            
+            tc_tabs = st.tabs(["Rapid", "Blitz", "Classical"])
+            
+            for i, tc in enumerate(['rapid', 'blitz', 'classical']):
+                with tc_tabs[i]:
+                    df_tc = df[df['speed'] == tc]
+                    if not df_tc.empty:
+                        # Metrics
+                        tc_games = len(df_tc)
+                        tc_wins = len(df_tc[df_tc['result'] == 'Win'])
+                        tc_rate = tc_wins / tc_games
+                        tc_rating = df_tc.iloc[0]['user_rating']
+                        
+                        c1, c2, c3 = st.columns(3)
+                        c1.metric("Rating", tc_rating)
+                        c2.metric("Win Rate", f"{tc_rate:.1%}")
+                        c3.metric("Games", tc_games)
+                        
+                        st.markdown("#### Top Openings")
+                        tc_openings = get_opening_stats(df_tc).head(5)
+                        if not tc_openings.empty:
+                            tc_display = tc_openings.copy()
+                            tc_display['avg_rating'] = tc_display['avg_rating'].fillna(0).astype(int)
+                            tc_display['win_rate'] = tc_display['win_rate'].apply(lambda x: f"{x:.1%}")
+                            tc_display.columns = ['Opening Name', 'Games Played', 'Wins', 'Draws', 'Losses', 'Average Rating', 'Win Rate']
+                            st.dataframe(tc_display, use_container_width=True)
+                        else:
+                            st.info("No opening stats available.")
+                    else:
+                        st.info(f"No {tc.capitalize()} games found.")
             
         # Tab 2: Basic EDA
         with tab2:
