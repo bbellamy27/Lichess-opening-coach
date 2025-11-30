@@ -4,7 +4,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from api_client import LichessClient
 from data_processing import process_games, get_opening_stats, calculate_risk_metrics, calculate_pacing_metrics, calculate_time_stats, calculate_analysis_metrics
-from eda import plot_win_rate_by_color, plot_rating_trend, plot_top_openings, plot_win_rate_by_opening, plot_time_heatmap, plot_opponent_scatter, plot_termination_pie, plot_correlation_heatmap
+from eda import plot_win_rate_by_color, plot_rating_trend, plot_top_openings, plot_win_rate_by_opening, plot_time_heatmap, plot_opponent_scatter, plot_termination_pie, plot_correlation_heatmap, plot_radar_chart, plot_move_time_distribution, plot_opening_sunburst
 from llm_client import LLMClient
 from engine_client import EngineClient
 from puter_client import PuterClient
@@ -597,13 +597,66 @@ else:
             if not df.empty:
                 st.subheader("Deep Dive Analytics")
                 
-                col1, col2 = st.columns(2)
+                # --- Row 1: Personality Radar & Move Times ---
+                col1, col2 = st.columns([1, 1])
+                
                 with col1:
+                    # Prepare Radar Data
+                    # We need 5 metrics on 0-10 scale
+                    
+                    # 1. Aggression (Risk Score)
+                    aggression = risk_data['score'] if risk_data else 5
+                    
+                    # 2. Speed (Pacing Score)
+                    speed = pacing_data['score'] if pacing_data else 5
+                    
+                    # 3. Accuracy (Inverted ACPL)
+                    # 0 ACPL = 10, 100 ACPL = 0
+                    accuracy = 5
+                    if analysis_stats:
+                        acpl = analysis_stats['avg_acpl']
+                        accuracy = max(0, min(10, 10 - (acpl / 10)))
+                        
+                    # 4. Opening Knowledge (Opening Phase Score)
+                    opening_know = 5
+                    if analysis_stats:
+                        opening_know = analysis_stats['phases']['Opening']['score']
+                        
+                    # 5. Endgame Skill (Endgame Phase Score)
+                    endgame_skill = 5
+                    if analysis_stats:
+                        endgame_skill = analysis_stats['phases']['Endgame']['score']
+                        
+                    radar_data = {
+                        'categories': ['Aggression', 'Speed', 'Accuracy', 'Opening Prep', 'Endgame Skill'],
+                        'values': [aggression, speed, accuracy, opening_know, endgame_skill]
+                    }
+                    
+                    st.plotly_chart(plot_radar_chart(radar_data), use_container_width=True)
+                    
+                with col2:
+                    # Move Time Histogram
+                    if time_stats and 'raw_times' in time_stats:
+                        st.plotly_chart(plot_move_time_distribution(time_stats['raw_times']), use_container_width=True)
+                    else:
+                        st.info("Move time data unavailable.")
+
+                st.divider()
+                
+                # --- Row 2: Opening Sunburst ---
+                st.subheader("Opening Repertoire Map")
+                st.plotly_chart(plot_opening_sunburst(df), use_container_width=True)
+                
+                st.divider()
+
+                # --- Row 3: Existing Heatmaps ---
+                col3, col4 = st.columns(2)
+                with col3:
                     # Heatmap of playing times
                     st.plotly_chart(plot_time_heatmap(df), use_container_width=True)
                     # Pie chart of game terminations
                     st.plotly_chart(plot_termination_pie(df), use_container_width=True)
-                with col2:
+                with col4:
                     # Win rate vs Opponent Rating
                     st.plotly_chart(plot_opponent_scatter(df), use_container_width=True)
                     

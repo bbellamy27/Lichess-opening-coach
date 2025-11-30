@@ -382,7 +382,8 @@ def calculate_pacing_metrics(df, time_control):
         'color': color,
         'avg_moves': avg_moves,
         'feedback': feedback,
-        'improvement': improvement
+        'improvement': improvement,
+        'score': pacing_score # Added raw score for Radar Chart
     }
 
 import chess
@@ -408,12 +409,14 @@ def calculate_time_stats(games, username, time_control="overall", pacing_label="
         dict: {
             'opening_avg': float, 'opening_feedback': str,
             'middlegame_avg': float, 'middlegame_feedback': str,
-            'endgame_avg': float, 'endgame_feedback': str
+            'endgame_avg': float, 'endgame_feedback': str,
+            'raw_times': list # Added for Histogram
         }
     """
     opening_times = []
     middlegame_times = []
     endgame_times = []
+    all_times = [] # For Histogram
     
     for game in games:
         # Skip if no clock data
@@ -456,6 +459,7 @@ def calculate_time_stats(games, username, time_control="overall", pacing_label="
                     
                 time_spent = (clocks[i] - clocks[i+2]) / 100 + increment
                 time_spent = max(0, time_spent)
+                all_times.append(time_spent)
                 
                 move_num = (i // 2) + 1
                 
@@ -550,7 +554,8 @@ def calculate_time_stats(games, username, time_control="overall", pacing_label="
         'middlegame_feedback': get_feedback("Middlegame", mid_avg, t['mid'], pacing_label),
         
         'endgame_avg': end_avg,
-        'endgame_feedback': get_feedback("Endgame", end_avg, t['end'], pacing_label)
+        'endgame_feedback': get_feedback("Endgame", end_avg, t['end'], pacing_label),
+        'raw_times': all_times # Added for Histogram
     }
 
 def get_synergized_advice(phase, score, pacing_label):
