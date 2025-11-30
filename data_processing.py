@@ -552,3 +552,57 @@ def calculate_time_stats(games, username, time_control="overall", pacing_label="
         'endgame_avg': end_avg,
         'endgame_feedback': get_feedback("Endgame", end_avg, t['end'], pacing_label)
     }
+
+def calculate_analysis_metrics(games, username):
+    """
+    Calculate accuracy metrics (ACPL, Blunders) from Lichess analysis data.
+    """
+    total_acpl = 0
+    acpl_count = 0
+    total_blunders = 0
+    total_mistakes = 0
+    total_inaccuracies = 0
+    total_moves = 0
+    analyzed_games = 0
+    
+    for game in games:
+        # Check if analysis is available
+        if 'analysis' not in game:
+            continue
+            
+        analyzed_games += 1
+        
+        # Determine user color
+        white_user = game.get('players', {}).get('white', {}).get('user', {}).get('name', 'Unknown')
+        user_color = 'white' if white_user.lower() == username.lower() else 'black'
+        
+        # Get analysis for user
+        analysis = game.get('analysis', [])
+        
+        # Lichess analysis is a list of move objects. We need to filter for user's moves.
+        # However, the 'analysis' list usually corresponds to moves.
+        # A simpler way is to look at the 'players' object which often contains 'analysis' summary if available.
+        
+        player_analysis = game.get('players', {}).get(user_color, {}).get('analysis', {})
+        
+        if player_analysis:
+            total_acpl += player_analysis.get('acpl', 0)
+            acpl_count += 1
+            total_blunders += player_analysis.get('blunder', 0)
+            total_mistakes += player_analysis.get('mistake', 0)
+            total_inaccuracies += player_analysis.get('inaccuracy', 0)
+            
+            # Estimate moves from move list length (approximate)
+            moves = game.get('moves', '').split()
+            total_moves += len(moves) // 2 # User moves
+            
+    if acpl_count == 0:
+        return None
+        
+    return {
+        'games_analyzed': analyzed_games,
+        'avg_acpl': round(total_acpl / acpl_count, 1),
+        'blunder_rate': round((total_blunders / total_moves) * 100, 1) if total_moves > 0 else 0,
+        'mistake_rate': round((total_mistakes / total_moves) * 100, 1) if total_moves > 0 else 0,
+        'inaccuracy_rate': round((total_inaccuracies / total_moves) * 100, 1) if total_moves > 0 else 0
+    }

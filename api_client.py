@@ -34,7 +34,8 @@ class LichessClient:
             'perfType': 'blitz,rapid,bullet,classical', # Filter by game types
             'opening': 'true',     # Include opening information
             'rated': 'true',       # Only include rated games
-            'clocks': 'true'       # Include clock data for move times
+            'clocks': 'true',      # Include clock data for move times
+            'evals': 'true'        # Include analysis data (ACPL, blunders)
         }
         
         # Headers to specify the content type

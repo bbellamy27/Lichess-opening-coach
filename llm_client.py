@@ -27,19 +27,9 @@ class LLMClient:
             self.model_name = 'gemini-2.0-flash'
             self.model = genai.GenerativeModel(self.model_name)
 
-    def generate_coaching_report(self, player_stats, opening_stats, risk_data=None, pacing_data=None, time_stats=None):
+    def generate_coaching_report(self, player_stats, opening_stats, risk_data=None, pacing_data=None, time_stats=None, analysis_stats=None):
         """
         Generate a personalized coaching report using the LLM.
-        
-        Args:
-            player_stats (dict): Dictionary containing player metrics.
-            opening_stats (pd.DataFrame): DataFrame of opening statistics.
-            risk_data (dict): Volatility metrics (label, score, etc.).
-            pacing_data (dict): Pacing metrics (label, avg_moves, etc.).
-            time_stats (dict): Time management stats (opening/mid/end avg times).
-            
-        Returns:
-            str: The generated coaching report in Markdown format.
         """
         if not self.model:
             return "Error: Google API Key not configured."
@@ -58,6 +48,16 @@ class LLMClient:
         - Middlegame: {time_stats.get('middlegame_avg')}s/move ({time_stats.get('middlegame_feedback', '').split('<br>')[0].replace('**', '')})
         - Endgame: {time_stats.get('endgame_avg')}s/move ({time_stats.get('endgame_feedback', '').split('<br>')[0].replace('**', '')})
             """
+            
+        analysis_info = ""
+        if analysis_stats:
+            analysis_info = f"""
+        Lichess Analysis Data (Based on {analysis_stats.get('games_analyzed')} analyzed games):
+        - Avg ACPL (Accuracy): {analysis_stats.get('avg_acpl')} (Lower is better)
+        - Blunder Rate: {analysis_stats.get('blunder_rate')}%
+        - Mistake Rate: {analysis_stats.get('mistake_rate')}%
+        - Inaccuracy Rate: {analysis_stats.get('inaccuracy_rate')}%
+            """
         
         # Construct the prompt for the LLM
         prompt = f"""
@@ -71,6 +71,7 @@ class LLMClient:
         {risk_info}
         {pacing_info}
         {time_info}
+        {analysis_info}
         
         Top Openings Played:
         {top_openings}
