@@ -269,11 +269,7 @@ def calculate_pacing_metrics(df, time_control):
         color = "#00C853" # Vibrant Green
         feedback = f"Your average game length ({avg_moves} moves) is typical for {tc} chess. Good pacing!"
         
-    else:
-        label = "Just Right 🎯"
-        color = "#00C853" # Vibrant Green
-        feedback = f"Your average game length ({avg_moves} moves) is typical for {tc} chess. Good pacing!"
-        
+
     return {
         'label': label,
         'color': color,
