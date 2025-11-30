@@ -23,8 +23,8 @@ class LLMClient:
         else:
             # Configure the Gemini API with the provided key
             genai.configure(api_key=self.api_key)
-            # Try to use the 'gemini-1.5-flash' model, fallback to 'gemini-pro' if needed
-            self.model_name = 'gemini-1.5-flash'
+            # Use 'gemini-2.0-flash' as it is available and fast
+            self.model_name = 'gemini-2.0-flash'
             self.model = genai.GenerativeModel(self.model_name)
 
     def generate_coaching_report(self, player_stats, opening_stats):
