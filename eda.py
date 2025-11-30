@@ -82,17 +82,20 @@ def plot_win_rate_by_opening(opening_stats, min_games=5):
     if opening_stats.empty:
         return None
         
-    filtered = opening_stats[opening_stats['games'] >= min_games].head(15)
+    filtered = opening_stats[opening_stats['games'] >= min_games].head(15).copy()
+    filtered['win_rate_pct'] = filtered['win_rate'] * 100
     
-    fig = px.bar(filtered, x='win_rate', y='opening_name', orientation='h',
+    fig = px.bar(filtered, x='win_rate_pct', y='opening_name', orientation='h',
                  title=f"Win Rate by Opening (min {min_games} games)",
-                 labels={'opening_name': 'Opening', 'win_rate': 'Win Rate'},
+                 labels={'opening_name': 'Opening', 'win_rate_pct': 'Win Rate (%)'},
                  color='win_rate', 
-                 color_continuous_scale=[(0, COLORS['Loss']), (0.5, COLORS['Draw']), (1, COLORS['Win'])])
+                 color_continuous_scale=[(0, COLORS['Loss']), (0.5, COLORS['Draw']), (1, COLORS['Win'])],
+                 text_auto='.1f') # Show value on bar
                  
     fig.update_layout(
         yaxis={'categoryorder':'total ascending'},
-        xaxis_tickformat = '.0%',
+        xaxis_title="Win Rate (%)",
+        xaxis=dict(range=[0, 100]), # Fix range to 0-100
         plot_bgcolor=COLORS['Background'],
         paper_bgcolor=COLORS['Background'],
         font_color=COLORS['Text']
