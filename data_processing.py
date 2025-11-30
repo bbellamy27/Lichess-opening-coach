@@ -169,7 +169,8 @@ def calculate_risk_metrics(df):
             'label': "N/A", 
             'feedback': "Not enough data.",
             'mistakes': "N/A",
-            'improvement': "Play more games!"
+            'improvement': "Play more games!",
+            'explanation': "Not enough data to calculate volatility."
         }
         
     # 1. Draw Rate Factor (0-10)
@@ -266,7 +267,8 @@ def calculate_risk_metrics(df):
         'label': label,
         'feedback': feedback,
         'mistakes': mistakes,
-        'improvement': improvement
+        'improvement': improvement,
+        'explanation': explanation
     }
 
 def calculate_pacing_metrics(df, time_control):
