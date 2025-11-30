@@ -235,10 +235,20 @@ if app_mode == "🏠 Home / Analyzer":
         # Tab 1: Raw Data Tables
         with tab1:
             st.subheader("Recent Games")
-            st.dataframe(df[['date', 'variant', 'speed', 'user_color', 'result', 'opening_name', 'eco', 'termination']].head(100), use_container_width=True)
+            # Prepare Game Data for Display
+            display_df = df[['date', 'variant', 'speed', 'user_color', 'result', 'opening_name', 'eco', 'termination']].head(100).copy()
+            display_df.columns = ['Date', 'Variant', 'Time Control', 'Color Played', 'Result', 'Opening Played', 'ECO', 'Termination']
+            st.dataframe(display_df, use_container_width=True)
             
             st.subheader("Opening Statistics")
-            st.dataframe(opening_stats, use_container_width=True)
+            # Prepare Opening Stats for Display
+            display_stats = opening_stats.copy()
+            display_stats['avg_rating'] = display_stats['avg_rating'].fillna(0).astype(int)
+            display_stats['win_rate'] = display_stats['win_rate'].apply(lambda x: f"{x:.1%}")
+            
+            # Rename columns
+            display_stats.columns = ['Opening Name', 'Games Played', 'Wins', 'Draws', 'Losses', 'Average Rating', 'Win Rate']
+            st.dataframe(display_stats, use_container_width=True)
             
         # Tab 2: Basic EDA
         with tab2:
