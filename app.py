@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from api_client import LichessClient
 from data_processing import process_games, get_opening_stats
-from eda import plot_win_rate_by_color, plot_rating_trend, plot_top_openings, plot_win_rate_by_opening, plot_time_heatmap, plot_opponent_scatter, plot_termination_pie
+from eda import plot_win_rate_by_color, plot_rating_trend, plot_top_openings, plot_win_rate_by_opening, plot_time_heatmap, plot_opponent_scatter, plot_termination_pie, plot_correlation_heatmap
 from llm_client import LLMClient
 import os
 from dotenv import load_dotenv
@@ -199,6 +199,9 @@ if analyze_btn:
             with col2:
                 # Win rate vs Opponent Rating
                 st.plotly_chart(plot_opponent_scatter(df), use_container_width=True)
+                
+                # Correlation Heatmap
+                st.plotly_chart(plot_correlation_heatmap(df), use_container_width=True)
                 
         # Tab 4: AI Coach (Gemini Integration)
         with tab4:

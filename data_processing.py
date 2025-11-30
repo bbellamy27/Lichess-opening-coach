@@ -64,6 +64,11 @@ def process_games(games, username):
         eco = opening.get('eco') # ECO code (e.g., B01)
         opening_name = opening.get('name')
         
+        # --- Calculate Move Count ---
+        moves = game.get('moves', '')
+        # Calculate ply (half-moves)
+        ply_count = len(moves.split()) if moves else 0
+        
         # --- Advanced Features (Phase 2) ---
         
         # 1. Game Termination Status
@@ -102,7 +107,9 @@ def process_games(games, username):
             'result': result,
             'termination': status,
             'eco': eco,
-            'opening_name': opening_name
+            'eco': eco,
+            'opening_name': opening_name,
+            'ply_count': ply_count
         })
         
     # Convert list of dicts to DataFrame

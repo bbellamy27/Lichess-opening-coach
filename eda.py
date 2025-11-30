@@ -168,3 +168,41 @@ def plot_termination_pie(df):
         font_color=COLORS['Text']
     )
     return fig
+
+def plot_correlation_heatmap(df):
+    """
+    Generate a correlation heatmap for numerical variables.
+    """
+    if df.empty:
+        return None
+    
+    # Select numerical columns for correlation
+    # We map 'result' to a numeric value for correlation: Win=1, Draw=0.5, Loss=0
+    df_corr = df.copy()
+    result_map = {'Win': 1, 'Draw': 0.5, 'Loss': 0}
+    df_corr['result_numeric'] = df_corr['result'].map(result_map)
+    
+    cols = ['user_rating', 'opponent_rating', 'ply_count', 'result_numeric']
+    corr_matrix = df_corr[cols].corr()
+    
+    # Rename for better display
+    labels = {
+        'user_rating': 'My Rating',
+        'opponent_rating': 'Opp Rating',
+        'ply_count': 'Moves (Ply)',
+        'result_numeric': 'Result'
+    }
+    
+    fig = px.imshow(corr_matrix,
+                    x=[labels.get(c, c) for c in corr_matrix.columns],
+                    y=[labels.get(c, c) for c in corr_matrix.columns],
+                    title="Correlation Matrix",
+                    color_continuous_scale='RdBu_r', # Red-Blue diverging
+                    zmin=-1, zmax=1)
+                    
+    fig.update_layout(
+        plot_bgcolor=COLORS['Background'],
+        paper_bgcolor=COLORS['Background'],
+        font_color=COLORS['Text']
+    )
+    return fig
