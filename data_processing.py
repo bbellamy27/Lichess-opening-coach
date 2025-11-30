@@ -567,63 +567,84 @@ def get_synergized_advice(phase, score, pacing_label):
     
     if phase == "Opening":
         if score <= 3:
+            # Target: Level 4 (Basic Safety)
             if is_fast:
-                advice = "You are blitzing out openings and falling into traps.<br><br>👉 <b>Action:</b> Spend at least 10 seconds on move 5-10 to verify you aren't blundering."
+                advice = "You are blitzing out openings and falling into traps.<br><br>👉 <b>To reach Level 4:</b> Spend at least 10 seconds on move 5-10 to verify you aren't blundering."
             elif is_slow:
-                advice = "You are thinking too long in the opening and still getting bad positions.<br><br>👉 <b>Action:</b> Stick to simple system openings (e.g., London, Colle) where memorization is less critical."
+                advice = "You are thinking too long in the opening and still getting bad positions.<br><br>👉 <b>To reach Level 4:</b> Stick to simple system openings (e.g., London, Colle) where memorization is less critical."
             else:
-                advice = "Your opening play is fragile.<br><br>👉 <b>Action:</b> Review your last 5 losses. Did you blunder before move 15? If so, check an opening database."
-        elif score <= 6:
+                advice = "Your opening play is fragile.<br><br>👉 <b>To reach Level 4:</b> Review your last 5 losses. Did you blunder before move 15? If so, check an opening database."
+        elif score <= 5:
+            # Target: Level 6 (Competence)
             if is_fast:
-                advice = "You play superficial developing moves.<br><br>👉 <b>Action:</b> Don't just develop pieces; develop them to squares where they attack or control the center."
+                advice = "You play superficial developing moves.<br><br>👉 <b>To reach Level 6:</b> Don't just develop pieces; develop them to squares where they attack or control the center."
             elif is_slow:
-                advice = "You survive the opening but burn too much time.<br><br>👉 <b>Action:</b> Create a Chessable course for your main white/black repertoire to speed up recall."
+                advice = "You survive the opening but burn too much time.<br><br>👉 <b>To reach Level 6:</b> Create a Chessable course for your main white/black repertoire to speed up recall."
             else:
-                advice = "Solid but passive.<br><br>👉 <b>Action:</b> Learn one 'gambit' or sharp line to practice handling initiative early on."
+                advice = "Solid but passive.<br><br>👉 <b>To reach Level 6:</b> Learn one 'gambit' or sharp line to practice handling initiative early on."
+        elif score <= 7:
+            # Target: Level 8 (Advanced)
+            if is_fast:
+                advice = "You know the moves but miss the plans.<br><br>👉 <b>To reach Level 8:</b> Study the 'pawn structures' arising from your openings to understand the middlegame plans."
+            else:
+                advice = "You are predictable.<br><br>👉 <b>To reach Level 8:</b> Add a second defense against 1.e4 or 1.d4 to make it harder for opponents to prep against you."
         elif score <= 9:
-            advice = "Strong opening play.<br><br>👉 <b>Action:</b> To reach level 10, look for 'novelties' or rare sidelines in your main opening to catch opponents off guard."
+            # Target: Level 10 (Mastery)
+            advice = "Strong opening play.<br><br>👉 <b>To reach Level 10:</b> Look for 'novelties' or rare sidelines in your main opening to catch opponents off guard."
         else:
-            advice = "Master-level opening prep.<br><br>👉 <b>Action:</b> Focus on transitioning to the middlegame plan. Ensure you know the <i>plans</i> not just the moves."
+            advice = "Master-level opening prep.<br><br>👉 <b>Next Step:</b> Focus on transitioning to the middlegame plan. Ensure you know the <i>plans</i> not just the moves."
 
     elif phase == "Middlegame":
         if score <= 3:
+            # Target: Level 4 (Safety)
             if is_fast:
-                advice = "You are missing one-move tactics.<br><br>👉 <b>Action:</b> Sit on your hands. Literally. Do not move until you have checked for checks, captures, and threats."
+                advice = "You are missing one-move tactics.<br><br>👉 <b>To reach Level 4:</b> Sit on your hands. Literally. Do not move until you have checked for checks, captures, and threats."
             elif is_slow:
-                advice = "You are hallucinating ghosts.<br><br>👉 <b>Action:</b> Trust your intuition on 'obvious' recaptures and save your calculation for critical moments."
+                advice = "You are hallucinating ghosts.<br><br>👉 <b>To reach Level 4:</b> Trust your intuition on 'obvious' recaptures and save your calculation for critical moments."
             else:
-                advice = "Tactical oversight is your main issue.<br><br>👉 <b>Action:</b> Solve 10 'Mate in 1' and 'Mate in 2' puzzles before every session."
-        elif score <= 6:
+                advice = "Tactical oversight is your main issue.<br><br>👉 <b>To reach Level 4:</b> Solve 10 'Mate in 1' and 'Mate in 2' puzzles before every session."
+        elif score <= 5:
+            # Target: Level 6 (Planning)
             if is_fast:
-                advice = "You attack prematurely.<br><br>👉 <b>Action:</b> Before launching an attack, ensure you have a piece majority in that sector."
+                advice = "You attack prematurely.<br><br>👉 <b>To reach Level 6:</b> Before launching an attack, ensure you have a piece majority in that sector."
             elif is_slow:
-                advice = "You miss opportunities to simplify.<br><br>👉 <b>Action:</b> If you are up material, look for trades. Don't complicate it."
+                advice = "You miss opportunities to simplify.<br><br>👉 <b>To reach Level 6:</b> If you are up material, look for trades. Don't complicate it."
             else:
-                advice = "You struggle with planning.<br><br>👉 <b>Action:</b> When no tactics are present, improve your worst-placed piece."
+                advice = "You struggle with planning.<br><br>👉 <b>To reach Level 6:</b> When no tactics are present, improve your worst-placed piece."
+        elif score <= 7:
+            # Target: Level 8 (Advanced Tactics/Strategy)
+            advice = "Strong positional play.<br><br>👉 <b>To reach Level 8:</b> Study 'prophylaxis'. Predict your opponent's plan and stop it before it starts."
         elif score <= 9:
-            advice = "Strong positional play.<br><br>👉 <b>Action:</b> To reach level 10, study 'prophylaxis'. Predict your opponent's plan and stop it before it starts."
+            # Target: Level 10 (Mastery)
+            advice = "Tactical wizardry.<br><br>👉 <b>To reach Level 10:</b> Ensure your sacrifices are sound. Don't play for 'hope chess' against stronger opponents."
         else:
-            advice = "Tactical wizardry.<br><br>👉 <b>Action:</b> Ensure your sacrifices are sound. Don't play for 'hope chess' against stronger opponents."
+            advice = "Grandmaster level middlegame.<br><br>👉 <b>Next Step:</b> Maintain this form. You are seeing everything."
 
     elif phase == "Endgame":
         if score <= 3:
+            # Target: Level 4 (Basics)
             if is_fast:
-                advice = "Endgames require calculation, not speed.<br><br>👉 <b>Action:</b> Slow down. Count the pawn races. Do not guess."
+                advice = "Endgames require calculation, not speed.<br><br>👉 <b>To reach Level 4:</b> Slow down. Count the pawn races. Do not guess."
             elif is_slow:
-                advice = "You run out of time in winning positions.<br><br>👉 <b>Action:</b> Learn the 'Lucena' and 'Philidor' positions by heart so you can play them instantly."
+                advice = "You run out of time in winning positions.<br><br>👉 <b>To reach Level 4:</b> Learn the 'Lucena' and 'Philidor' positions by heart so you can play them instantly."
             else:
-                advice = "You are losing winning endgames.<br><br>👉 <b>Action:</b> Review 'King Activity'. In the endgame, the King is a fighting piece. Use it!"
-        elif score <= 6:
+                advice = "You are losing winning endgames.<br><br>👉 <b>To reach Level 4:</b> Review 'King Activity'. In the endgame, the King is a fighting piece. Use it!"
+        elif score <= 5:
+            # Target: Level 6 (Technique)
             if is_fast:
-                advice = "You drift in equal endgames.<br><br>👉 <b>Action:</b> Have a plan. Create a passed pawn. Don't just shuffle."
+                advice = "You drift in equal endgames.<br><br>👉 <b>To reach Level 6:</b> Have a plan. Create a passed pawn. Don't just shuffle."
             elif is_slow:
-                advice = "You overcalculate simple endings.<br><br>👉 <b>Action:</b> Learn the rule of the square and opposition to save time."
+                advice = "You overcalculate simple endings.<br><br>👉 <b>To reach Level 6:</b> Learn the rule of the square and opposition to save time."
             else:
-                advice = "Solid technique.<br><br>👉 <b>Action:</b> Study 'Rook vs Pawn' endings. They are the most common and most misplayed."
+                advice = "Solid technique.<br><br>👉 <b>To reach Level 6:</b> Study 'Rook vs Pawn' endings. They are the most common and most misplayed."
+        elif score <= 7:
+            # Target: Level 8 (Advanced)
+            advice = "Excellent conversion.<br><br>👉 <b>To reach Level 8:</b> Study 'Zugzwang'. Learn how to run your opponent out of moves."
         elif score <= 9:
-            advice = "Excellent conversion.<br><br>👉 <b>Action:</b> To reach level 10, study 'Zugzwang'. Learn how to run your opponent out of moves."
+            # Target: Level 10 (Mastery)
+            advice = "Machine-like precision.<br><br>👉 <b>To reach Level 10:</b> You are ready for master-level endgame studies (e.g., Dvoretsky)."
         else:
-            advice = "Machine-like precision.<br><br>👉 <b>Action:</b> You are ready for master-level endgame studies (e.g., Dvoretsky)."
+            advice = "Tablebase perfection.<br><br>👉 <b>Next Step:</b> You could teach a course on endgames."
             
     return advice
 
