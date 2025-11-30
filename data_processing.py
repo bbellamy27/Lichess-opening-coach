@@ -145,3 +145,81 @@ def get_opening_stats(df):
     stats = stats.sort_values('games', ascending=False)
     
     return stats
+
+def calculate_risk_metrics(df):
+    """
+    Calculate a 'Risk/Aggressiveness' score (1-10) based on game data.
+    
+    Heuristic:
+    - Low Draw Rate = Higher Risk
+    - Short Game Length = Higher Risk
+    
+    Returns:
+        dict: {
+            'score': float (1-10),
+            'label': str,
+            'feedback': str,
+            'mistakes': str,
+            'improvement': str
+        }
+    """
+    if df.empty:
+        return {
+            'score': 0, 
+            'label': "N/A", 
+            'feedback': "Not enough data.",
+            'mistakes': "N/A",
+            'improvement': "Play more games!"
+        }
+        
+    # 1. Draw Rate Factor (0-10)
+    # 50% draw rate -> Score 0 (Super Solid)
+    # 0% draw rate -> Score 10 (All or Nothing)
+    total_games = len(df)
+    draws = len(df[df['result'] == 'Draw'])
+    draw_rate = draws / total_games if total_games > 0 else 0
+    
+    # Invert draw rate: 0.5 -> 0, 0.0 -> 1.0
+    # Formula: (1 - (draw_rate * 2)) * 10. Clamped 0-10.
+    # If draw rate > 50%, score is 0.
+    draw_factor = max(0, (1 - (draw_rate * 2))) * 10
+    
+    # 2. Game Length Factor (0-10)
+    # Avg 20 moves -> Score 10 (Quick kills/deaths)
+    # Avg 60 moves -> Score 0 (Long grinds)
+    avg_ply = df['ply_count'].mean()
+    avg_moves = avg_ply / 2
+    
+    # Formula: (60 - avg_moves) / 4. Clamped 0-10.
+    # 20 moves -> (40)/4 = 10
+    # 60 moves -> 0
+    length_factor = max(0, min(10, (60 - avg_moves) / 4))
+    
+    # Weighted Average: 60% Draw Rate, 40% Length
+    risk_score = (draw_factor * 0.6) + (length_factor * 0.4)
+    risk_score = round(max(1, min(10, risk_score)), 1)
+    
+    # Determine Label and Feedback
+    if risk_score <= 3:
+        label = "Solid Rock 🪨"
+        feedback = "You play very safely, minimizing risk. You likely prefer long, positional games and rarely give your opponent tactical chances."
+        mistakes = "Passivity. You might miss winning tactical shots because you're too focused on safety. You may also struggle to convert advantages if you don't take risks."
+        improvement = "Practice calculation exercises. Don't be afraid to complicate the position when you are better. Learn some sharper openings to expand your style."
+    elif risk_score <= 7:
+        label = "Balanced Tactician ⚖️"
+        feedback = "You have a healthy mix of solid play and aggression. You take risks when justified but don't go crazy."
+        mistakes = "Inconsistency. Sometimes you might play too passively in sharp positions or too aggressively in quiet ones."
+        improvement = "Analyze your losses to see if they came from over-pressing or being too passive. Work on recognizing 'critical moments' where risk is required."
+    else:
+        label = "Berserker ⚔️"
+        feedback = "You play extremely aggressively! You prefer sharp, chaotic positions where tactics rule. Win or lose, your games are never boring."
+        mistakes = "Over-aggression. You likely sacrifice material unsoundly or neglect your king's safety. You might lose games you were winning by trying to win 'harder'."
+        improvement = "Patience! Learn to sit on your hands. If there is no tactic, improve your position slowly. Study prophylactic thinking (preventing opponent's plans)."
+        
+    return {
+        'score': risk_score,
+        'label': label,
+        'feedback': feedback,
+        'mistakes': mistakes,
+        'improvement': improvement
+    }

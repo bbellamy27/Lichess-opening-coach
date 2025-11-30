@@ -1,7 +1,8 @@
+```python
 import streamlit as st
 import pandas as pd
 from api_client import LichessClient
-from data_processing import process_games, get_opening_stats
+from data_processing import process_games, get_opening_stats, calculate_risk_metrics
 from eda import plot_win_rate_by_color, plot_rating_trend, plot_top_openings, plot_win_rate_by_opening, plot_time_heatmap, plot_opponent_scatter, plot_termination_pie, plot_correlation_heatmap
 from llm_client import LLMClient
 from engine_client import EngineClient
@@ -331,6 +332,44 @@ st.sidebar.header("Settings")
         # Tab 2: Basic EDA
         with tab2:
             st.subheader("Performance Overview")
+            
+            # --- Risk Analysis Section ---
+            risk_data = calculate_risk_metrics(df)
+            
+            st.markdown("### ⚠️ Risk Analysis")
+            r_col1, r_col2 = st.columns([1, 2])
+            
+            with r_col1:
+                # Gauge Chart for Risk Score
+                fig_gauge = go.Figure(go.Indicator(
+                    mode = "gauge+number",
+                    value = risk_data['score'],
+                    title = {'text': f"Volatility Score: {risk_data['label']}"},
+                    gauge = {
+                        'axis': {'range': [0, 10]},
+                        'bar': {'color': "darkblue"},
+                        'steps': [
+                            {'range': [0, 3], 'color': "lightgreen"},
+                            {'range': [3, 7], 'color': "yellow"},
+                            {'range': [7, 10], 'color': "red"}
+                        ],
+                        'threshold': {
+                            'line': {'color': "black", 'width': 4},
+                            'thickness': 0.75,
+                            'value': risk_data['score']
+                        }
+                    }
+                ))
+                fig_gauge.update_layout(height=300, margin=dict(l=20, r=20, t=50, b=20))
+                st.plotly_chart(fig_gauge, use_container_width=True)
+                
+            with r_col2:
+                st.info(f"**Feedback:** {risk_data['feedback']}")
+                st.warning(f"**Potential Mistakes:** {risk_data['mistakes']}")
+                st.success(f"**How to Improve:** {risk_data['improvement']}")
+            
+            st.divider()
+            
             col1, col2 = st.columns(2)
             with col1:
                 st.plotly_chart(plot_win_rate_by_color(df), use_container_width=True)
