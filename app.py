@@ -117,23 +117,23 @@ st.markdown("Analyze your games, find your weaknesses, and get AI coaching.")
 
 # Sidebar Inputs
 st.sidebar.header("Settings")
-    username = st.sidebar.text_input("Lichess Username", value="DrNykterstein")
-    num_games = st.sidebar.slider("Number of Games", min_value=10, max_value=500, value=100)
-    
-    # AI Provider Selection
-    ai_provider = st.sidebar.selectbox("AI Provider", ["Free Llama (Default)", "Google Gemini", "Groq (Llama 3)"])
-    
-    # Dynamic API Key Input
-    if ai_provider == "Google Gemini":
-        api_key = st.sidebar.text_input("Google API Key", type="password", help="Get it from aistudio.google.com")
-        if api_key:
-            os.environ["GOOGLE_API_KEY"] = api_key
-    elif ai_provider == "Groq (Llama 3)":
-        api_key = st.sidebar.text_input("Groq API Key", type="password", help="Get it from console.groq.com")
-        if api_key:
-            os.environ["GROQ_API_KEY"] = api_key
-    else:
-        st.sidebar.info("Using free Llama 3.1 via Puter. No key required!")
+username = st.sidebar.text_input("Lichess Username", value="DrNykterstein")
+num_games = st.sidebar.slider("Number of Games", min_value=10, max_value=500, value=100)
+
+# AI Provider Selection
+ai_provider = st.sidebar.selectbox("AI Provider", ["Free Llama (Default)", "Google Gemini", "Groq (Llama 3)"])
+
+# Dynamic API Key Input
+if ai_provider == "Google Gemini":
+    api_key = st.sidebar.text_input("Google API Key", type="password", help="Get it from aistudio.google.com")
+    if api_key:
+        os.environ["GOOGLE_API_KEY"] = api_key
+elif ai_provider == "Groq (Llama 3)":
+    api_key = st.sidebar.text_input("Groq API Key", type="password", help="Get it from console.groq.com")
+    if api_key:
+        os.environ["GROQ_API_KEY"] = api_key
+else:
+    st.sidebar.info("Using free Llama 3.1 via Puter. No key required!")
 
     # Analyze Button
     if st.sidebar.button("Analyze Games"):
