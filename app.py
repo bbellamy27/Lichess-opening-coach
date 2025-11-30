@@ -406,6 +406,24 @@ else:
                     st.success(f"**Improvement:** {risk_data['improvement']}")
                 
                 st.divider()
+
+                # --- Time Management Section ---
+                st.markdown("### ⏱️ Time Management Analysis")
+                
+                if 'games' in locals() and games:
+                    time_stats = calculate_time_stats(games, username)
+                    
+                    t_col1, t_col2, t_col3 = st.columns(3)
+                    with t_col1:
+                        st.metric("Opening (Moves 1-10)", f"{time_stats['opening_avg']}s", delta_color="off", help="Avg time per move in opening")
+                    with t_col2:
+                        st.metric("Middlegame (Queens On)", f"{time_stats['middlegame_avg']}s", delta_color="off", help="Avg time per move while Queens are on board")
+                    with t_col3:
+                        st.metric("Endgame (Queens Off)", f"{time_stats['endgame_avg']}s", delta_color="off", help="Avg time per move after Queens are traded")
+                    
+                    st.divider()
+                else:
+                    st.warning("Time analysis requires raw game data. Please re-fetch games.")
                 
                 col1, col2 = st.columns(2)
                 with col1:
@@ -422,28 +440,7 @@ else:
             if not df.empty:
                 st.subheader("Deep Dive Analytics")
                 
-                # --- Time Management Section ---
-                st.markdown("### ⏱️ Time Management Analysis")
-                
-                # Calculate time stats (requires raw games list, but we only have df here. 
-                # We need to pass 'games' to this tab or re-process. 
-                # Ideally, we should calculate this once. 
-                # But 'games' variable is available in the main scope!)
-                
-                if 'games' in locals() and games:
-                    time_stats = calculate_time_stats(games, username)
-                    
-                    t_col1, t_col2, t_col3 = st.columns(3)
-                    with t_col1:
-                        st.metric("Opening (Moves 1-10)", f"{time_stats['opening_avg']}s", delta_color="off", help="Avg time per move in opening")
-                    with t_col2:
-                        st.metric("Middlegame (Queens On)", f"{time_stats['middlegame_avg']}s", delta_color="off", help="Avg time per move while Queens are on board")
-                    with t_col3:
-                        st.metric("Endgame (Queens Off)", f"{time_stats['endgame_avg']}s", delta_color="off", help="Avg time per move after Queens are traded")
-                    
-                    st.divider()
-                else:
-                    st.warning("Time analysis requires raw game data. Please re-fetch games.")
+
 
                 col1, col2 = st.columns(2)
                 with col1:
