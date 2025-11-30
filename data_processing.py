@@ -555,7 +555,7 @@ def calculate_time_stats(games, username, time_control="overall", pacing_label="
 
 def calculate_analysis_metrics(games, username):
     """
-    Calculate accuracy metrics (ACPL, Blunders) from Lichess analysis data.
+    Calculate accuracy metrics (ACPL, Blunders) and phase breakdown from Lichess analysis data.
     """
     total_acpl = 0
     acpl_count = 0
@@ -565,8 +565,14 @@ def calculate_analysis_metrics(games, username):
     total_moves = 0
     analyzed_games = 0
     
+    # Phase accumulators: [total_eval_loss, move_count]
+    phases = {
+        'Opening': {'loss': 0, 'moves': 0},
+        'Middlegame': {'loss': 0, 'moves': 0},
+        'Endgame': {'loss': 0, 'moves': 0}
+    }
+    
     for game in games:
-        # Check if analysis is available
         if 'analysis' not in game:
             continue
             
@@ -574,17 +580,11 @@ def calculate_analysis_metrics(games, username):
         
         # Determine user color
         white_user = game.get('players', {}).get('white', {}).get('user', {}).get('name', 'Unknown')
-        user_color = 'white' if white_user.lower() == username.lower() else 'black'
+        user_color = chess.WHITE if white_user.lower() == username.lower() else chess.BLACK
+        user_color_str = 'white' if user_color == chess.WHITE else 'black'
         
-        # Get analysis for user
-        analysis = game.get('analysis', [])
-        
-        # Lichess analysis is a list of move objects. We need to filter for user's moves.
-        # However, the 'analysis' list usually corresponds to moves.
-        # A simpler way is to look at the 'players' object which often contains 'analysis' summary if available.
-        
-        player_analysis = game.get('players', {}).get(user_color, {}).get('analysis', {})
-        
+        # Overall Stats from Player Summary
+        player_analysis = game.get('players', {}).get(user_color_str, {}).get('analysis', {})
         if player_analysis:
             total_acpl += player_analysis.get('acpl', 0)
             acpl_count += 1
@@ -592,17 +592,129 @@ def calculate_analysis_metrics(games, username):
             total_mistakes += player_analysis.get('mistake', 0)
             total_inaccuracies += player_analysis.get('inaccuracy', 0)
             
-            # Estimate moves from move list length (approximate)
-            moves = game.get('moves', '').split()
-            total_moves += len(moves) // 2 # User moves
+        # Phase Breakdown from Move Analysis
+        analysis = game.get('analysis', [])
+        moves_san = game.get('moves', '').split()
+        
+        if not analysis or not moves_san:
+            continue
             
+        board = chess.Board()
+        
+        # Iterate moves and analysis
+        # Analysis list usually matches moves list 1-to-1
+        for i, move_san in enumerate(moves_san):
+            if i >= len(analysis):
+                break
+                
+            # Check if it's user's move
+            is_user_move = (i % 2 == 0) if user_color == chess.WHITE else (i % 2 != 0)
+            
+            # Get eval for THIS move (result of the move)
+            # Eval loss is usually calculated by comparing current eval to best possible eval
+            # But Lichess 'analysis' object gives the eval AFTER the move.
+            # To get loss, we need the eval BEFORE the move (which is the eval of the previous ply)
+            # and compare it.
+            # However, simpler proxy: Use 'judgment' if available (blunder/mistake/inaccuracy)
+            # Or just rely on the fact that we can't easily calc ACPL per phase without engine.
+            # WAIT: Lichess analysis often includes 'judgment' in the move stream? No, usually separate.
+            # Actually, let's use a simpler heuristic for now:
+            # If we can't get precise ACPL per phase, we can use the 'judgment' count per phase if available?
+            # No, 'judgment' is not in the standard 'analysis' list usually.
+            
+            # ALTERNATIVE: Just use the move number to assign the *Overall* ACPL to phases? No that's fake.
+            
+            # Let's try to parse 'eval' change.
+            # Current Eval (Before Move) -> Next Eval (After Move)
+            # If user is White: Eval should increase. If it drops, that's loss.
+            # If user is Black: Eval should decrease. If it rises, that's loss.
+            
+            current_eval_data = analysis[i]
+            prev_eval_data = analysis[i-1] if i > 0 else {'eval': 20} # Start equal-ish
+            
+            # Skip if mate is involved (too noisy)
+            if 'mate' in current_eval_data or 'mate' in prev_eval_data:
+                board.push_san(move_san)
+                continue
+                
+            if is_user_move:
+                try:
+                    curr = current_eval_data.get('eval', 0)
+                    prev = prev_eval_data.get('eval', 0)
+                    
+                    loss = 0
+                    if user_color == chess.WHITE:
+                        # White wants positive. If curr < prev, loss = prev - curr
+                        if curr < prev:
+                            loss = prev - curr
+                    else:
+                        # Black wants negative. If curr > prev, loss = curr - prev
+                        if curr > prev:
+                            loss = curr - prev
+                            
+                    # Cap loss to avoid crazy spikes (e.g. blundering queen = 900)
+                    loss = min(loss, 500)
+                    
+                    # Assign to phase
+                    move_num = (i // 2) + 1
+                    phase = 'Opening'
+                    if move_num > 10:
+                        queens = len(board.pieces(chess.QUEEN, chess.WHITE)) + len(board.pieces(chess.QUEEN, chess.BLACK))
+                        phase = 'Middlegame' if queens > 0 else 'Endgame'
+                        
+                    phases[phase]['loss'] += loss
+                    phases[phase]['moves'] += 1
+                    
+                except Exception:
+                    pass
+            
+            try:
+                board.push_san(move_san)
+            except:
+                break
+                
+            total_moves += 1 if is_user_move else 0
+
     if acpl_count == 0:
         return None
         
+    # Calculate Phase Scores (1-10)
+    # Heuristic: Avg Loss (Centipawns) -> Score
+    # < 15: 10 (Perfect)
+    # 15-25: 9
+    # 25-35: 8
+    # 35-45: 7
+    # 45-55: 6
+    # 55-65: 5
+    # 65-75: 4
+    # 75-90: 3
+    # 90-110: 2
+    # > 110: 1 (Bad)
+    
+    def get_score(avg_loss):
+        if avg_loss == 0: return 0 # No data
+        if avg_loss < 15: return 10
+        if avg_loss < 25: return 9
+        if avg_loss < 35: return 8
+        if avg_loss < 45: return 7
+        if avg_loss < 55: return 6
+        if avg_loss < 65: return 5
+        if avg_loss < 75: return 4
+        if avg_loss < 90: return 3
+        if avg_loss < 110: return 2
+        return 1
+
+    phase_stats = {}
+    for p, data in phases.items():
+        avg = data['loss'] / data['moves'] if data['moves'] > 0 else 0
+        score = get_score(avg)
+        phase_stats[p] = {'avg_loss': round(avg, 1), 'score': score}
+
     return {
         'games_analyzed': analyzed_games,
         'avg_acpl': round(total_acpl / acpl_count, 1),
         'blunder_rate': round((total_blunders / total_moves) * 100, 1) if total_moves > 0 else 0,
         'mistake_rate': round((total_mistakes / total_moves) * 100, 1) if total_moves > 0 else 0,
-        'inaccuracy_rate': round((total_inaccuracies / total_moves) * 100, 1) if total_moves > 0 else 0
+        'inaccuracy_rate': round((total_inaccuracies / total_moves) * 100, 1) if total_moves > 0 else 0,
+        'phases': phase_stats
     }

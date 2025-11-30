@@ -458,6 +458,84 @@ else:
                     st.success(f"**🛡️ Risk Advice:** {risk_data['improvement']}")
                 
                 st.divider()
+                
+                # --- Game Accuracy Section ---
+                st.markdown("### 🎯 Game Accuracy & Phase Analysis")
+                
+                # Calculate Analysis Metrics
+                # Note: We need to calculate this here for display, even if we calculated it later for AI
+                raw_games = st.session_state.get('raw_games')
+                analysis_stats = None
+                if raw_games:
+                    if rating_category != "Overall":
+                        filtered_games_ai = [g for g in raw_games if g.get('speed') == rating_category.lower()]
+                    else:
+                        filtered_games_ai = raw_games
+                    analysis_stats = calculate_analysis_metrics(filtered_games_ai, username)
+                
+                if analysis_stats:
+                    # Overall Accuracy Metrics
+                    ac_col1, ac_col2, ac_col3, ac_col4 = st.columns(4)
+                    ac_col1.metric("Avg ACPL (Accuracy)", f"{analysis_stats['avg_acpl']}", help="Average Centipawn Loss. Lower is better. <20 is GM level.")
+                    ac_col2.metric("Blunder Rate", f"{analysis_stats['blunder_rate']}%", help="% of moves that are blunders.")
+                    ac_col3.metric("Mistake Rate", f"{analysis_stats['mistake_rate']}%", help="% of moves that are mistakes.")
+                    ac_col4.metric("Inaccuracy Rate", f"{analysis_stats['inaccuracy_rate']}%", help="% of moves that are inaccuracies.")
+                    
+                    st.markdown("#### 📊 Phase Breakdown")
+                    
+                    phases = analysis_stats.get('phases', {})
+                    
+                    # Helper for Phase Card
+                    def phase_card(name, data, pacing_label):
+                        score = data['score']
+                        avg_loss = data['avg_loss']
+                        
+                        # Color based on score
+                        if score >= 8: color = "#00E676" # Green
+                        elif score >= 5: color = "#FFD600" # Yellow
+                        else: color = "#D50000" # Red
+                        
+                        # Feedback Logic
+                        if score >= 8:
+                            feedback = "Excellent accuracy."
+                        elif score >= 5:
+                            feedback = "Solid, but room for improvement."
+                        else:
+                            feedback = "High error rate. Needs work."
+                            
+                        # Synergy with Pacing
+                        if "Fast" in pacing_label or "Sprinter" in pacing_label:
+                            if score < 5:
+                                feedback += " You are playing too fast and blundering."
+                            else:
+                                feedback += " Impressive accuracy given your speed."
+                        elif "Slow" in pacing_label or "Time" in pacing_label:
+                            if score < 5:
+                                feedback += " You are thinking long but still missing tactics."
+                            else:
+                                feedback += " Your slow play is paying off in precision."
+                                
+                        return f"""
+                        <div style="background-color: #262730; padding: 15px; border-radius: 10px; border-left: 5px solid {color};">
+                            <h4 style="margin:0;">{name}</h4>
+                            <h2 style="margin:0; color: {color};">{score}/10</h2>
+                            <p style="margin:0; font-size: 0.9em; color: #aaa;">Avg Loss: {avg_loss}</p>
+                            <p style="margin-top: 10px; font-size: 0.9em;">{feedback}</p>
+                        </div>
+                        """
+                    
+                    p_col1, p_col2, p_col3 = st.columns(3)
+                    with p_col1:
+                        st.markdown(phase_card("Opening", phases.get('Opening', {'score':0, 'avg_loss':0}), pacing_data['label']), unsafe_allow_html=True)
+                    with p_col2:
+                        st.markdown(phase_card("Middlegame", phases.get('Middlegame', {'score':0, 'avg_loss':0}), pacing_data['label']), unsafe_allow_html=True)
+                    with p_col3:
+                        st.markdown(phase_card("Endgame", phases.get('Endgame', {'score':0, 'avg_loss':0}), pacing_data['label']), unsafe_allow_html=True)
+                        
+                else:
+                    st.info("No analysis data available. Request a computer analysis on Lichess for your games to see accuracy stats.")
+                
+                st.divider()
 
                 # --- Time Management Section ---
                 st.markdown("### ⏱️ Time Management Analysis")
