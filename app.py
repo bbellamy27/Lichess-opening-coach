@@ -3,7 +3,7 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from api_client import LichessClient
-from data_processing import process_games, get_opening_stats, calculate_risk_metrics, calculate_pacing_metrics, calculate_time_stats
+from data_processing import process_games, get_opening_stats, calculate_risk_metrics, calculate_pacing_metrics, calculate_time_stats, calculate_analysis_metrics
 from eda import plot_win_rate_by_color, plot_rating_trend, plot_top_openings, plot_win_rate_by_opening, plot_time_heatmap, plot_opponent_scatter, plot_termination_pie, plot_correlation_heatmap
 from llm_client import LLMClient
 from engine_client import EngineClient
