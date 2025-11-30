@@ -249,6 +249,7 @@ else:
             filtered_total_games = len(filtered_df)
             filtered_wins = len(filtered_df[filtered_df['result'] == 'Win'])
             filtered_win_rate = filtered_wins / filtered_total_games if filtered_total_games > 0 else 0
+            filtered_rating = filtered_df.iloc[0]['user_rating']
             # Calculate Best Openings by Color (Highest Win Rate with min games)
             white_df = filtered_df[filtered_df['user_color'] == 'white']
             black_df = filtered_df[filtered_df['user_color'] == 'black']
