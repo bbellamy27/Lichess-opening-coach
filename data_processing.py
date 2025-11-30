@@ -478,36 +478,56 @@ def calculate_time_stats(games, username, time_control="overall", pacing_label="
     # --- Generate Feedback with Pacing Synergy ---
     
     # Helper to generate phase feedback
+    # Helper to generate phase feedback
     def get_feedback(phase, avg_time, target_range, pacing_label):
         low, high = target_range
+        
+        # Rich Advice Dictionary
+        phase_advice = {
+            'Opening': {
+                'fast': {'reason': "Rushing openings leads to poor structures.", 'tip': "Check for tactical refutations before moving."},
+                'slow': {'reason': "Over-thinking theory wastes clock.", 'tip': "Trust your prep and develop pieces naturally."},
+                'good': {'reason': "You are balancing development and caution well.", 'tip': "Maintain this rhythm."}
+            },
+            'Middlegame': {
+                'fast': {'reason': "Speed here causes tactical blunders.", 'tip': "Calculate at least 2 candidate moves in complex positions."},
+                'slow': {'reason': "Time trouble will ruin your endgame.", 'tip': "Don't calculate everything; rely on patterns."},
+                'good': {'reason': "You are allocating time correctly for calculations.", 'tip': "Keep looking for critical moments."}
+            },
+            'Endgame': {
+                'fast': {'reason': "Endgames require precision, not speed.", 'tip': "Count tempos and calculate pawn races carefully."},
+                'slow': {'reason': "You risk flagging in winning positions.", 'tip': "If it's theoretical, play confidently."},
+                'good': {'reason': "You are navigating the technical phase well.", 'tip': "Stay alert for stalemate tricks."}
+            }
+        }
         
         # Base Feedback
         if avg_time < low:
             status = "Too Fast"
-            reason = "You are playing faster than recommended."
-            tip = "Slow down and check for blunders."
+            base = phase_advice[phase]['fast']
         elif avg_time > high:
             status = "Too Slow"
-            reason = "You are burning too much time."
-            tip = "Trust your intuition and move faster."
+            base = phase_advice[phase]['slow']
         else:
             status = "On Target"
-            reason = "Your speed is optimal."
-            tip = "Maintain this rhythm."
+            base = phase_advice[phase]['good']
+            
+        reason = base['reason']
+        tip = base['tip']
             
         # Synergy: Override/Augment based on Pacing Archetype
         if "Sprinter" in pacing_label or "Impulsive" in pacing_label or "Too Fast" in pacing_label:
             if status == "On Target":
                 tip += " But given your 'Fast' style, be careful not to rush critical moments."
             elif status == "Too Fast":
-                reason = f"As a '{pacing_label.split()[0]}', you are rushing this phase."
+                reason = f"As a '{pacing_label.split()[0]}', you are rushing this phase. {reason}"
                 tip = "FORCE yourself to double-check tactics. Sit on your hands."
                 
         elif "Time Trouble" in pacing_label or "Paralysis" in pacing_label or "Too Slow" in pacing_label:
             if status == "On Target":
                 tip += " Good job staying on target despite your tendency to play slow."
             elif status == "Too Slow":
-                reason = f"Typical '{pacing_label.split()[0]}' behavior. You are overthinking."
+                reason = f"Typical '{pacing_label.split()[0]}' behavior. {reason}"
                 tip = "Set a strict time limit per move. Good enough is better than perfect."
                 
         return f"**{status}**\n\nReason: {reason}\n\nTip: {tip}\n\nTarget: {low}-{high}s"
