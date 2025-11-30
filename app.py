@@ -250,20 +250,30 @@ else:
             filtered_wins = len(filtered_df[filtered_df['result'] == 'Win'])
             filtered_win_rate = filtered_wins / filtered_total_games if filtered_total_games > 0 else 0
             filtered_rating = filtered_df.iloc[0]['user_rating']
-            top_opening_name = filtered_opening_stats.iloc[0]['opening_name'] if not filtered_opening_stats.empty else "N/A"
+            # Calculate Top Openings by Color
+            white_df = filtered_df[filtered_df['user_color'] == 'white']
+            black_df = filtered_df[filtered_df['user_color'] == 'black']
+            
+            white_stats = get_opening_stats(white_df)
+            black_stats = get_opening_stats(black_df)
+            
+            top_white = white_stats.iloc[0]['opening_name'] if not white_stats.empty else "N/A"
+            top_black = black_stats.iloc[0]['opening_name'] if not black_stats.empty else "N/A"
         else:
             filtered_total_games = 0
             filtered_rating = "N/A"
             filtered_win_rate = 0
-            top_opening_name = "N/A"
+            top_white = "N/A"
+            top_black = "N/A"
             filtered_opening_stats = pd.DataFrame()
 
         # --- Summary Cards (Updated with Filtered Data) ---
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3, col4, col5 = st.columns(5)
         col1.metric("Games Played", f"{filtered_total_games}")
         col2.metric(f"{rating_category} Rating", f"{filtered_rating}")
         col3.metric("Win Rate", f"{filtered_win_rate:.1%}", delta=f"{filtered_wins} Won" if not filtered_df.empty else None)
-        col4.metric("Top Opening", top_opening_name)
+        col4.metric("Top White Opening", top_white, help="Most played opening when you are White")
+        col5.metric("Top Black Opening", top_black, help="Most played opening when you are Black")
         
         st.divider()
         
