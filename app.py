@@ -297,6 +297,11 @@ else:
         
         st.divider()
         
+        # Initialize metrics variables to None to prevent NameError in later tabs
+        risk_data = None
+        pacing_data = None
+        time_stats = None
+
         # --- Tabs for Analysis Sections ---
         tab1, tab2, tab3, tab4 = st.tabs(["📊 Data Overview", "📈 Basic EDA", "🧠 Advanced Insights", "🤖 AI Coach"])
         
