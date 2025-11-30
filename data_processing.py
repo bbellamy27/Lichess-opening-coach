@@ -553,7 +553,81 @@ def calculate_time_stats(games, username, time_control="overall", pacing_label="
         'endgame_feedback': get_feedback("Endgame", end_avg, t['end'], pacing_label)
     }
 
-def calculate_analysis_metrics(games, username):
+def get_synergized_advice(phase, score, pacing_label):
+    """
+    Generates specific, actionable advice based on:
+    1. The Game Phase (Opening, Middlegame, Endgame)
+    2. The Accuracy Score (1-10)
+    3. The Player's Pacing Style (Fast vs Slow)
+    """
+    is_fast = "Fast" in pacing_label or "Sprinter" in pacing_label
+    is_slow = "Slow" in pacing_label or "Time" in pacing_label
+    
+    advice = ""
+    
+    if phase == "Opening":
+        if score <= 3:
+            if is_fast:
+                advice = "You are blitzing out openings and falling into traps. **Action:** Spend at least 10 seconds on move 5-10 to verify you aren't blundering."
+            elif is_slow:
+                advice = "You are thinking too long in the opening and still getting bad positions. **Action:** Stick to simple system openings (e.g., London, Colle) where memorization is less critical."
+            else:
+                advice = "Your opening play is fragile. **Action:** Review your last 5 losses. Did you blunder before move 15? If so, check an opening database."
+        elif score <= 6:
+            if is_fast:
+                advice = "You play superficial developing moves. **Action:** Don't just develop pieces; develop them to squares where they attack or control the center."
+            elif is_slow:
+                advice = "You survive the opening but burn too much time. **Action:** Create a Chessable course for your main white/black repertoire to speed up recall."
+            else:
+                advice = "Solid but passive. **Action:** Learn one 'gambit' or sharp line to practice handling initiative early on."
+        elif score <= 9:
+            advice = "Strong opening play. **Action:** To reach level 10, look for 'novelties' or rare sidelines in your main opening to catch opponents off guard."
+        else:
+            advice = "Master-level opening prep. **Action:** Focus on transitioning to the middlegame plan. Ensure you know the *plans* not just the moves."
+
+    elif phase == "Middlegame":
+        if score <= 3:
+            if is_fast:
+                advice = "You are missing one-move tactics. **Action:** Sit on your hands. Literally. Do not move until you have checked for checks, captures, and threats."
+            elif is_slow:
+                advice = "You are hallucinating ghosts. **Action:** Trust your intuition on 'obvious' recaptures and save your calculation for critical moments."
+            else:
+                advice = "Tactical oversight is your main issue. **Action:** Solve 10 'Mate in 1' and 'Mate in 2' puzzles before every session."
+        elif score <= 6:
+            if is_fast:
+                advice = "You attack prematurely. **Action:** Before launching an attack, ensure you have a piece majority in that sector."
+            elif is_slow:
+                advice = "You miss opportunities to simplify. **Action:** If you are up material, look for trades. Don't complicate it."
+            else:
+                advice = "You struggle with planning. **Action:** When no tactics are present, improve your worst-placed piece."
+        elif score <= 9:
+            advice = "Strong positional play. **Action:** To reach level 10, study 'prophylaxis'. Predict your opponent's plan and stop it before it starts."
+        else:
+            advice = "Tactical wizardry. **Action:** Ensure your sacrifices are sound. Don't play for 'hope chess' against stronger opponents."
+
+    elif phase == "Endgame":
+        if score <= 3:
+            if is_fast:
+                advice = "Endgames require calculation, not speed. **Action:** Slow down. Count the pawn races. Do not guess."
+            elif is_slow:
+                advice = "You run out of time in winning positions. **Action:** Learn the 'Lucena' and 'Philidor' positions by heart so you can play them instantly."
+            else:
+                advice = "You are losing winning endgames. **Action:** Review 'King Activity'. In the endgame, the King is a fighting piece. Use it!"
+        elif score <= 6:
+            if is_fast:
+                advice = "You drift in equal endgames. **Action:** Have a plan. Create a passed pawn. Don't just shuffle."
+            elif is_slow:
+                advice = "You overcalculate simple endings. **Action:** Learn the rule of the square and opposition to save time."
+            else:
+                advice = "Solid technique. **Action:** Study 'Rook vs Pawn' endings. They are the most common and most misplayed."
+        elif score <= 9:
+            advice = "Excellent conversion. **Action:** To reach level 10, study 'Zugzwang'. Learn how to run your opponent out of moves."
+        else:
+            advice = "Machine-like precision. **Action:** You are ready for master-level endgame studies (e.g., Dvoretsky)."
+            
+    return advice
+
+def calculate_analysis_metrics(games, username, pacing_label="Balanced"):
     """
     Calculate accuracy metrics (ACPL, Blunders) and phase breakdown from Lichess analysis data.
     """
@@ -688,20 +762,8 @@ def calculate_analysis_metrics(games, username):
         accuracy_percent = max(0, round(100 - (avg_loss / 1.5), 1)) # Heuristic: 150 ACPL = 0% acc
         blunder_rate = round((blunders / moves) * 100, 1) if moves > 0 else 0.0
         
-        # Next Step Advice
-        advice = ""
-        if p == "Opening":
-            if score >= 8: advice = "Expand your repertoire to sharper lines."
-            elif score >= 5: advice = "Review your main lines with an engine to fix small inaccuracies."
-            else: advice = "Stop improvising. Stick to 2-3 solid systems and learn the first 10 moves."
-        elif p == "Middlegame":
-            if score >= 8: advice = "Study master games to learn advanced positional concepts."
-            elif score >= 5: advice = "Focus on prophylaxis: Ask 'What does my opponent want?' before every move."
-            else: advice = "Practice tactics puzzles daily. You are missing simple combinations."
-        elif p == "Endgame":
-            if score >= 8: advice = "Study complex rook endings to squeeze wins from draws."
-            elif score >= 5: advice = "Learn key theoretical endgames (Lucena, Philidor, K+P vs K)."
-            else: advice = "Don't trade queens unless you are 100% sure the pawn ending is winning."
+        # Sophisticated Advice Generation
+        advice = get_synergized_advice(p, score, pacing_label)
             
         phase_stats[p] = {
             'avg_loss': round(avg_loss, 1), 

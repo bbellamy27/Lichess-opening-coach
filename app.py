@@ -471,7 +471,7 @@ else:
                         filtered_games_ai = [g for g in raw_games if g.get('speed') == rating_category.lower()]
                     else:
                         filtered_games_ai = raw_games
-                    analysis_stats = calculate_analysis_metrics(filtered_games_ai, username)
+                    analysis_stats = calculate_analysis_metrics(filtered_games_ai, username, pacing_label=pacing_data['label'])
                 
                 if analysis_stats:
                     # Overall Accuracy Metrics
@@ -623,7 +623,7 @@ else:
                         filtered_games_ai = [g for g in raw_games if g.get('speed') == rating_category.lower()]
                     else:
                         filtered_games_ai = raw_games
-                    analysis_stats = calculate_analysis_metrics(filtered_games_ai, username)
+                    analysis_stats = calculate_analysis_metrics(filtered_games_ai, username, pacing_label=pacing_data['label'])
 
                 # Check for API Key based on provider
                 if ai_provider == "Google Gemini" and os.getenv("GOOGLE_API_KEY"):
