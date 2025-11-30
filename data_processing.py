@@ -197,21 +197,69 @@ def calculate_risk_metrics(df):
     risk_score = round(max(1, min(10, risk_score)), 1)
     
     # Determine Label and Feedback
-    if risk_score <= 3:
-        label = "Solid Rock 🪨"
-        feedback = "You play very safely, minimizing risk. You likely prefer long, positional games and rarely give your opponent tactical chances."
-        mistakes = "Passivity. You might miss winning tactical shots because you're too focused on safety. You may also struggle to convert advantages if you don't take risks."
-        improvement = "Practice calculation exercises. Don't be afraid to complicate the position when you are better. Learn some sharper openings to expand your style."
-    elif risk_score <= 7:
-        label = "Balanced Tactician ⚖️"
-        feedback = "You have a healthy mix of solid play and aggression. You take risks when justified but don't go crazy."
-        mistakes = "Inconsistency. Sometimes you might play too passively in sharp positions or too aggressively in quiet ones."
-        improvement = "Analyze your losses to see if they came from over-pressing or being too passive. Work on recognizing 'critical moments' where risk is required."
-    else:
-        label = "Berserker ⚔️"
-        feedback = "You play extremely aggressively! You prefer sharp, chaotic positions where tactics rule. Win or lose, your games are never boring."
-        mistakes = "Over-aggression. You likely sacrifice material unsoundly or neglect your king's safety. You might lose games you were winning by trying to win 'harder'."
-        improvement = "Patience! Learn to sit on your hands. If there is no tactic, improve your position slowly. Study prophylactic thinking (preventing opponent's plans)."
+    # Determine Label and Feedback based on 1-10 Score
+    int_score = int(risk_score)
+    
+    risk_profiles = {
+        1: {
+            "label": "The Wall 🧱",
+            "feedback": "You are incredibly hard to beat. You take zero risks.",
+            "improvement": "You might be missing wins by being too passive. Try to complicate the game when you have an advantage."
+        },
+        2: {
+            "label": "Safety First 🛡️",
+            "feedback": "You prioritize safety above all else. You rarely blunder.",
+            "improvement": "Don't be afraid of ghosts. Sometimes the sharpest move is the safest path to victory."
+        },
+        3: {
+            "label": "Cautious Player 🔒",
+            "feedback": "You prefer solid, positional games. You avoid complications.",
+            "improvement": "Work on your tactical vision. You need to be able to calculate sharp lines when forced."
+        },
+        4: {
+            "label": "Solid & Steady 🗿",
+            "feedback": "You play sound chess. You don't give away free gifts.",
+            "improvement": "Expand your opening repertoire to include some semi-open games to practice dynamic play."
+        },
+        5: {
+            "label": "Balanced ⚖️",
+            "feedback": "You have a perfect mix of solid play and aggression.",
+            "improvement": "Maintain this balance. Focus on deep strategic understanding to improve further."
+        },
+        6: {
+            "label": "Calculated Risk 📐",
+            "feedback": "You are willing to take risks, but only when you've calculated them.",
+            "improvement": "Trust your intuition in complex positions where you can't calculate everything."
+        },
+        7: {
+            "label": "Aggressive ⚔️",
+            "feedback": "You actively look for attacking chances. You put pressure on opponents.",
+            "improvement": "Ensure your attacks are sound. Don't attack just for the sake of attacking."
+        },
+        8: {
+            "label": "Attacker 🏹",
+            "feedback": "You are always moving forward. You hate defending.",
+            "improvement": "Learn to defend! Sometimes the best way to win is to weather the storm and counter-attack."
+        },
+        9: {
+            "label": "Daredevil 🧨",
+            "feedback": "You live on the edge. You sacrifice material for initiative frequently.",
+            "improvement": "Calm down. Not every position requires a sacrifice. Learn to play quiet moves."
+        },
+        10: {
+            "label": "Chaos Agent 🌪️",
+            "feedback": "You want the board to burn. Win or lose, it will be spectacular.",
+            "improvement": "You are gambling, not playing chess. Focus on 'prophylaxis' and king safety."
+        }
+    }
+    
+    profile = risk_profiles.get(int_score, risk_profiles[5])
+    label = profile['label']
+    feedback = profile['feedback']
+    improvement = profile['improvement']
+    mistakes = "N/A" # Deprecated in favor of specific improvement
+    
+    explanation = "Calculated based on your Draw Rate (lower = higher volatility) and Average Game Length (shorter = higher volatility)."
         
     return {
         'score': risk_score,

@@ -423,6 +423,7 @@ else:
                         font={'color': "white"}
                     )
                     st.plotly_chart(fig_gauge, use_container_width=True)
+                    st.caption(f"ℹ️ {risk_data['explanation']}")
                     
                 with r_col2:
                     # Pacing Metric Card - Improved Visuals
