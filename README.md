@@ -1,4 +1,7 @@
-    ```
+```
+# ♟️ Chess Improvement Coach for Lichess
+
+**Your personal AI-powered chess coach.** Analyze your Lichess games, find your weaknesses, and get actionable advice to improve.
 
 ## Project Structure
 *   `app.py`: Main application entry point.
@@ -9,3 +12,4 @@
 
 ## License
 MIT License
+```

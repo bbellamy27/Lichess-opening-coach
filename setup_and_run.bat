@@ -1,7 +1,7 @@
 @echo off
 cd /d "%~dp0"
 echo ==========================================
-echo   Lichess Opening Coach - One-Click Setup
+echo   Chess Improvement Coach for Lichess - One-Click Setup
 echo ==========================================
 
 REM 1. Check if Python is installed
@@ -26,12 +26,12 @@ call .venv\Scripts\activate
 pip install -r requirements.txt >nul 2>&1
 
 REM 3.5 Create Shortcut (Optional)
-if not exist "%USERPROFILE%\Desktop\Lichess Coach.lnk" (
+if not exist "%USERPROFILE%\Desktop\Chess Improvement Coach.lnk" (
     echo.
     set /p create_shortcut="Create Desktop Shortcut? (Y/N): "
     if /i "%create_shortcut%"=="Y" (
         echo [INFO] Creating shortcut...
-        powershell "$s=(New-Object -COM WScript.Shell).CreateShortcut('%USERPROFILE%\Desktop\Lichess Coach.lnk');$s.TargetPath='%~dp0setup_and_run.bat';$s.WorkingDirectory='%~dp0';$s.IconLocation='%~dp0app.py,0';$s.Save()"
+        powershell "$s=(New-Object -COM WScript.Shell).CreateShortcut('%USERPROFILE%\Desktop\Chess Improvement Coach.lnk');$s.TargetPath='%~dp0setup_and_run.bat';$s.WorkingDirectory='%~dp0';$s.IconLocation='%~dp0app.py,0';$s.Save()"
         echo [INFO] Shortcut created on Desktop!
     )
 )

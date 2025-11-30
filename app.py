@@ -18,7 +18,7 @@ load_dotenv()
 
 # --- Page Configuration ---
 st.set_page_config(
-    page_title="Lichess Opening Coach",
+    page_title="Chess Improvement Coach for Lichess",
     page_icon="♟️",
     layout="wide",
     initial_sidebar_state="expanded"

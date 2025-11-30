@@ -1,7 +1,6 @@
-# Lichess Opening Coach - Code Documentation
+# Chess Improvement Coach for Lichess - Code Documentation
 
-## Project Overview
-The **Lichess Opening Coach** is a Streamlit web application designed to help chess players analyze their games, visualize their performance, and receive personalized coaching advice using AI.
+The **Chess Improvement Coach for Lichess** is a Streamlit web application designed to help chess players analyze their games, visualize their performance, and receive personalized coaching advice using AI.
 
 ## Module Breakdown
 
