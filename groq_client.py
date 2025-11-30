@@ -44,29 +44,47 @@ class GroqClient:
             """
         
         prompt = f"""
-        You are a Grandmaster Chess Coach. Analyze the following player statistics and generate a personalized coaching report.
+        You are a Grandmaster Chess Coach. You are coaching a player rated **{player_stats.get('current_rating')}**.
         
-        Player Stats:
+        **CRITICAL INSTRUCTION:**
+        Your advice MUST be tailored to their rating level:
+        - **< 1200:** Focus on one-move blunders, basic opening principles, and not hanging pieces. Keep it simple.
+        - **1200 - 1600:** Focus on tactics, basic plans, and stop playing "hope chess".
+        - **1600 - 2000:** Focus on positional understanding, pawn structures, and specific opening theory.
+        - **> 2000:** Focus on nuance, prophylaxis, and advanced endgame technique.
+
+        **Player Profile:**
         - Username: {player_stats.get('username')}
-        - Current Rating: {player_stats.get('current_rating')}
+        - Rating: {player_stats.get('current_rating')}
         - Win Rate: {player_stats.get('win_rate'):.1%}
-        - Total Games Analyzed: {player_stats.get('total_games')}
+        - Games Analyzed: {player_stats.get('total_games')}
+        
+        **Style & Pacing:**
         {risk_info}
         {pacing_info}
+        
+        **Time Management:**
         {time_info}
+        
+        **Accuracy & Phase Analysis:**
         {analysis_info}
         
-        Top Openings Played:
+        **Opening Repertoire:**
         {top_openings}
         
-        Please provide a report with the following sections:
-        1. **Playstyle Analysis**: Incorporate their Risk Profile ({risk_data.get('label') if risk_data else 'N/A'}) and Pacing Archetype ({pacing_data.get('label') if pacing_data else 'N/A'}). Are they a "Berserker" or a "Grinder"? Do they play too fast?
-        2. **Strengths**: What are they doing well? (Look at high win rates and good time management).
-        3. **Weaknesses**: What needs improvement? (Look at low win rates, time trouble, or reckless speed).
-        4. **Opening Recommendations**: Suggest 1-2 new openings or variations to try based on their style.
-        5. **Training Plan**: A brief bulleted list of what they should focus on next (e.g., "Slow down in the opening", "Study endgames").
+        **Task:**
+        Provide a personalized coaching report. Do NOT be generic. Use the data above to diagnose their specific bottlenecks.
         
-        Keep the tone encouraging but professional. Use Markdown formatting.
+        **Report Structure:**
+        1.  **Executive Summary**: A 2-sentence summary of their player identity (e.g., "You are a solid positional player who struggles with time pressure in the endgame.").
+        2.  **Phase Analysis**:
+            *   **Opening**: Analyze their repertoire and accuracy. Are they surviving the opening?
+            *   **Middlegame**: Analyze their tactical sharpness (Blunder rate) and planning.
+            *   **Endgame**: Analyze their conversion skills.
+        3.  **The "One Thing"**: Identify the SINGLE biggest factor holding them back from the next rating tier (e.g., "Blundering in time trouble").
+        4.  **Training Plan**: 3 specific, actionable drills based on their rating and weaknesses.
+        
+        Keep the tone professional, insightful, and strictly tailored to a {player_stats.get('current_rating')} rated player.
         """
 
         system_prompt = "You are a helpful chess coach."

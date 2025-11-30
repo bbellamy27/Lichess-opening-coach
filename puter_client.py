@@ -40,28 +40,47 @@ class PuterClient:
             """
         
         prompt = f"""
-        You are a Chess Coach. Analyze these stats:
+        You are a Grandmaster Chess Coach. You are coaching a player rated **{player_stats.get('current_rating')}**.
         
-        Player: {player_stats.get('username')}
-        Rating: {player_stats.get('current_rating')}
-        Win Rate: {player_stats.get('win_rate'):.1%}
-        Total Games: {player_stats.get('total_games')}
+        **CRITICAL INSTRUCTION:**
+        Your advice MUST be tailored to their rating level:
+        - **< 1200:** Focus on one-move blunders, basic opening principles, and not hanging pieces. Keep it simple.
+        - **1200 - 1600:** Focus on tactics, basic plans, and stop playing "hope chess".
+        - **1600 - 2000:** Focus on positional understanding, pawn structures, and specific opening theory.
+        - **> 2000:** Focus on nuance, prophylaxis, and advanced endgame technique.
+
+        **Player Profile:**
+        - Username: {player_stats.get('username')}
+        - Rating: {player_stats.get('current_rating')}
+        - Win Rate: {player_stats.get('win_rate'):.1%}
+        - Games Analyzed: {player_stats.get('total_games')}
+        
+        **Style & Pacing:**
         {risk_info}
         {pacing_info}
+        
+        **Time Management:**
         {time_info}
+        
+        **Accuracy & Phase Analysis:**
         {analysis_info}
         
-        Top Openings:
+        **Opening Repertoire:**
         {top_openings}
         
-        Provide a brief report with:
-        1. Playstyle (Mention Risk & Pacing)
-        2. Strengths
-        3. Weaknesses
-        4. Recommendations
-        5. Training Plan
+        **Task:**
+        Provide a personalized coaching report. Do NOT be generic. Use the data above to diagnose their specific bottlenecks.
         
-        Use Markdown. Be encouraging.
+        **Report Structure:**
+        1.  **Executive Summary**: A 2-sentence summary of their player identity (e.g., "You are a solid positional player who struggles with time pressure in the endgame.").
+        2.  **Phase Analysis**:
+            *   **Opening**: Analyze their repertoire and accuracy. Are they surviving the opening?
+            *   **Middlegame**: Analyze their tactical sharpness (Blunder rate) and planning.
+            *   **Endgame**: Analyze their conversion skills.
+        3.  **The "One Thing"**: Identify the SINGLE biggest factor holding them back from the next rating tier (e.g., "Blundering in time trouble").
+        4.  **Training Plan**: 3 specific, actionable drills based on their rating and weaknesses.
+        
+        Keep the tone professional, insightful, and strictly tailored to a {player_stats.get('current_rating')} rated player.
         """
 
         payload = {
