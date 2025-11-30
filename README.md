@@ -1,13 +1,3 @@
-# Lichess Opening Insights: Data-Driven Chess Coaching
-
-**Team:**
-*   Brian ([GitHub](https://github.com/brianbellamy27))
-*   Harold ([GitHub](https://github.com/HaroldGonzalez21))
-
-## Project Overview
-This Streamlit web application analyzes a chess player’s recent games from Lichess.org and generates personalized opening recommendations using both statistical analysis and a Large Language Model (Google Gemini).
-
-## Features
 *   **Data Acquisition**: Fetches real-time game data from the Lichess API.
 *   **EDA**: Visualizes win rates, rating trends, and opening performance.
 *   **AI Coaching**: Uses Google Gemini to analyze your style and recommend new openings.
