@@ -249,22 +249,34 @@ else:
             filtered_total_games = len(filtered_df)
             filtered_wins = len(filtered_df[filtered_df['result'] == 'Win'])
             filtered_win_rate = filtered_wins / filtered_total_games if filtered_total_games > 0 else 0
-            filtered_rating = filtered_df.iloc[0]['user_rating']
-            # Calculate Top Openings by Color
+            # Calculate Best Openings by Color (Highest Win Rate with min games)
             white_df = filtered_df[filtered_df['user_color'] == 'white']
             black_df = filtered_df[filtered_df['user_color'] == 'black']
             
             white_stats = get_opening_stats(white_df)
             black_stats = get_opening_stats(black_df)
             
-            top_white = white_stats.iloc[0]['opening_name'] if not white_stats.empty else "N/A"
-            top_black = black_stats.iloc[0]['opening_name'] if not black_stats.empty else "N/A"
+            def get_best_opening(stats):
+                if stats.empty:
+                    return "N/A"
+                # Filter for openings with at least 5 games to be significant
+                # If no opening has 5 games, fall back to all openings
+                significant = stats[stats['games'] >= 5]
+                if significant.empty:
+                    significant = stats
+                
+                # Sort by Win Rate desc, then Games desc
+                best = significant.sort_values(['win_rate', 'games'], ascending=[False, False]).iloc[0]
+                return f"{best['opening_name']} ({best['win_rate']:.0%})"
+
+            best_white = get_best_opening(white_stats)
+            best_black = get_best_opening(black_stats)
         else:
             filtered_total_games = 0
             filtered_rating = "N/A"
             filtered_win_rate = 0
-            top_white = "N/A"
-            top_black = "N/A"
+            best_white = "N/A"
+            best_black = "N/A"
             filtered_opening_stats = pd.DataFrame()
 
         # --- Summary Cards (Updated with Filtered Data) ---
@@ -272,8 +284,8 @@ else:
         col1.metric("Games Played", f"{filtered_total_games}")
         col2.metric(f"{rating_category} Rating", f"{filtered_rating}")
         col3.metric("Win Rate", f"{filtered_win_rate:.1%}", delta=f"{filtered_wins} Won" if not filtered_df.empty else None)
-        col4.metric("Top White Opening", top_white, help="Most played opening when you are White")
-        col5.metric("Top Black Opening", top_black, help="Most played opening when you are Black")
+        col4.metric("Best as White", best_white, help="Highest win rate opening as White (min 5 games)")
+        col5.metric("Best as Black", best_black, help="Highest win rate opening as Black (min 5 games)")
         
         st.divider()
         
