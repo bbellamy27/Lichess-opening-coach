@@ -487,8 +487,11 @@ else:
                     
                     # Helper for Phase Card
                     def phase_card(name, data, pacing_label):
-                        score = data['score']
-                        avg_loss = data['avg_loss']
+                        score = data.get('score', 0)
+                        avg_loss = data.get('avg_loss', 0)
+                        acc_pct = data.get('accuracy_percent', 0)
+                        blunder_rate = data.get('blunder_rate', 0)
+                        advice = data.get('advice', "Keep playing to generate more data.")
                         
                         # Color based on score
                         if score >= 8: color = "#00E676" # Green
@@ -516,21 +519,29 @@ else:
                                 feedback += " Your slow play is paying off in precision."
                                 
                         return f"""
-                        <div style="background-color: #262730; padding: 15px; border-radius: 10px; border-left: 5px solid {color};">
-                            <h4 style="margin:0;">{name}</h4>
-                            <h2 style="margin:0; color: {color};">{score}/10</h2>
-                            <p style="margin:0; font-size: 0.9em; color: #aaa;">Avg Loss: {avg_loss}</p>
-                            <p style="margin-top: 10px; font-size: 0.9em;">{feedback}</p>
+                        <div style="background-color: #262730; padding: 15px; border-radius: 10px; border-left: 5px solid {color}; margin-bottom: 10px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <h4 style="margin:0;">{name}</h4>
+                                <h2 style="margin:0; color: {color};">{score}/10</h2>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-top: 5px; font-size: 0.9em; color: #ccc;">
+                                <span>🎯 <b>{acc_pct}%</b> Acc</span>
+                                <span>❌ <b>{blunder_rate}%</b> Blunders</span>
+                            </div>
+                            <p style="margin-top: 10px; font-size: 0.9em; font-style: italic; color: #aaa;">"{feedback}"</p>
+                            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #444;">
+                                <p style="margin:0; font-size: 0.85em; color: #fff;">💡 <b>Next Step:</b> {advice}</p>
+                            </div>
                         </div>
                         """
                     
                     p_col1, p_col2, p_col3 = st.columns(3)
                     with p_col1:
-                        st.markdown(phase_card("Opening", phases.get('Opening', {'score':0, 'avg_loss':0}), pacing_data['label']), unsafe_allow_html=True)
+                        st.markdown(phase_card("Opening", phases.get('Opening', {}), pacing_data['label']), unsafe_allow_html=True)
                     with p_col2:
-                        st.markdown(phase_card("Middlegame", phases.get('Middlegame', {'score':0, 'avg_loss':0}), pacing_data['label']), unsafe_allow_html=True)
+                        st.markdown(phase_card("Middlegame", phases.get('Middlegame', {}), pacing_data['label']), unsafe_allow_html=True)
                     with p_col3:
-                        st.markdown(phase_card("Endgame", phases.get('Endgame', {'score':0, 'avg_loss':0}), pacing_data['label']), unsafe_allow_html=True)
+                        st.markdown(phase_card("Endgame", phases.get('Endgame', {}), pacing_data['label']), unsafe_allow_html=True)
                         
                 else:
                     st.info("No analysis data available. Request a computer analysis on Lichess for your games to see accuracy stats.")

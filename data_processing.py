@@ -565,11 +565,11 @@ def calculate_analysis_metrics(games, username):
     total_moves = 0
     analyzed_games = 0
     
-    # Phase accumulators: [total_eval_loss, move_count]
+    # Phase accumulators: [total_eval_loss, move_count, blunders]
     phases = {
-        'Opening': {'loss': 0, 'moves': 0},
-        'Middlegame': {'loss': 0, 'moves': 0},
-        'Endgame': {'loss': 0, 'moves': 0}
+        'Opening': {'loss': 0, 'moves': 0, 'blunders': 0},
+        'Middlegame': {'loss': 0, 'moves': 0, 'blunders': 0},
+        'Endgame': {'loss': 0, 'moves': 0, 'blunders': 0}
     }
     
     for game in games:
@@ -602,7 +602,6 @@ def calculate_analysis_metrics(games, username):
         board = chess.Board()
         
         # Iterate moves and analysis
-        # Analysis list usually matches moves list 1-to-1
         for i, move_san in enumerate(moves_san):
             if i >= len(analysis):
                 break
@@ -610,33 +609,26 @@ def calculate_analysis_metrics(games, username):
             # Check if it's user's move
             is_user_move = (i % 2 == 0) if user_color == chess.WHITE else (i % 2 != 0)
             
-            # Get eval for THIS move (result of the move)
-            # Eval loss is usually calculated by comparing current eval to best possible eval
-            # But Lichess 'analysis' object gives the eval AFTER the move.
-            # To get loss, we need the eval BEFORE the move (which is the eval of the previous ply)
-            # and compare it.
-            # However, simpler proxy: Use 'judgment' if available (blunder/mistake/inaccuracy)
-            # Or just rely on the fact that we can't easily calc ACPL per phase without engine.
-            # WAIT: Lichess analysis often includes 'judgment' in the move stream? No, usually separate.
-            # Actually, let's use a simpler heuristic for now:
-            # If we can't get precise ACPL per phase, we can use the 'judgment' count per phase if available?
-            # No, 'judgment' is not in the standard 'analysis' list usually.
-            
-            # ALTERNATIVE: Just use the move number to assign the *Overall* ACPL to phases? No that's fake.
-            
-            # Let's try to parse 'eval' change.
-            # Current Eval (Before Move) -> Next Eval (After Move)
-            # If user is White: Eval should increase. If it drops, that's loss.
-            # If user is Black: Eval should decrease. If it rises, that's loss.
+            # Determine Phase
+            move_num = (i // 2) + 1
+            phase = 'Opening'
+            if move_num > 10:
+                queens = len(board.pieces(chess.QUEEN, chess.WHITE)) + len(board.pieces(chess.QUEEN, chess.BLACK))
+                phase = 'Middlegame' if queens > 0 else 'Endgame'
             
             current_eval_data = analysis[i]
-            prev_eval_data = analysis[i-1] if i > 0 else {'eval': 20} # Start equal-ish
+            prev_eval_data = analysis[i-1] if i > 0 else {'eval': 20}
             
-            # Skip if mate is involved (too noisy)
-            if 'mate' in current_eval_data or 'mate' in prev_eval_data:
-                board.push_san(move_san)
-                continue
-                
+            # Check for Blunder (Judgment)
+            # Lichess analysis sometimes has 'judgment' key in the move stream if explicitly requested or parsed
+            # But standard API 'analysis' list is just evals.
+            # However, we can infer blunders from large eval drops.
+            # Or better: The 'judgment' might be in the analysis stream if we are lucky, but usually it's separate.
+            # Let's use eval drop > 200 as proxy for blunder if judgment missing.
+            
+            is_blunder = False
+            # Try to find judgment in move comment or analysis data? No, simpler to use eval drop.
+            
             if is_user_move:
                 try:
                     curr = current_eval_data.get('eval', 0)
@@ -644,23 +636,15 @@ def calculate_analysis_metrics(games, username):
                     
                     loss = 0
                     if user_color == chess.WHITE:
-                        # White wants positive. If curr < prev, loss = prev - curr
-                        if curr < prev:
-                            loss = prev - curr
+                        if curr < prev: loss = prev - curr
                     else:
-                        # Black wants negative. If curr > prev, loss = curr - prev
-                        if curr > prev:
-                            loss = curr - prev
+                        if curr > prev: loss = curr - prev
                             
-                    # Cap loss to avoid crazy spikes (e.g. blundering queen = 900)
-                    loss = min(loss, 500)
+                    loss = min(loss, 1000) # Cap at 1000
                     
-                    # Assign to phase
-                    move_num = (i // 2) + 1
-                    phase = 'Opening'
-                    if move_num > 10:
-                        queens = len(board.pieces(chess.QUEEN, chess.WHITE)) + len(board.pieces(chess.QUEEN, chess.BLACK))
-                        phase = 'Middlegame' if queens > 0 else 'Endgame'
+                    if loss >= 300: # Blunder threshold
+                        phases[phase]['blunders'] += 1
+                        is_blunder = True
                         
                     phases[phase]['loss'] += loss
                     phases[phase]['moves'] += 1
@@ -679,20 +663,8 @@ def calculate_analysis_metrics(games, username):
         return None
         
     # Calculate Phase Scores (1-10)
-    # Heuristic: Avg Loss (Centipawns) -> Score
-    # < 15: 10 (Perfect)
-    # 15-25: 9
-    # 25-35: 8
-    # 35-45: 7
-    # 45-55: 6
-    # 55-65: 5
-    # 65-75: 4
-    # 75-90: 3
-    # 90-110: 2
-    # > 110: 1 (Bad)
-    
     def get_score(avg_loss):
-        if avg_loss == 0: return 0 # No data
+        if avg_loss == 0: return 0
         if avg_loss < 15: return 10
         if avg_loss < 25: return 9
         if avg_loss < 35: return 8
@@ -706,9 +678,38 @@ def calculate_analysis_metrics(games, username):
 
     phase_stats = {}
     for p, data in phases.items():
-        avg = data['loss'] / data['moves'] if data['moves'] > 0 else 0
-        score = get_score(avg)
-        phase_stats[p] = {'avg_loss': round(avg, 1), 'score': score}
+        moves = data['moves']
+        avg_loss = data['loss'] / moves if moves > 0 else 0
+        blunders = data['blunders']
+        
+        score = get_score(avg_loss)
+        
+        # Metrics
+        accuracy_percent = max(0, round(100 - (avg_loss / 1.5), 1)) # Heuristic: 150 ACPL = 0% acc
+        blunder_rate = round((blunders / moves) * 100, 1) if moves > 0 else 0.0
+        
+        # Next Step Advice
+        advice = ""
+        if p == "Opening":
+            if score >= 8: advice = "Expand your repertoire to sharper lines."
+            elif score >= 5: advice = "Review your main lines with an engine to fix small inaccuracies."
+            else: advice = "Stop improvising. Stick to 2-3 solid systems and learn the first 10 moves."
+        elif p == "Middlegame":
+            if score >= 8: advice = "Study master games to learn advanced positional concepts."
+            elif score >= 5: advice = "Focus on prophylaxis: Ask 'What does my opponent want?' before every move."
+            else: advice = "Practice tactics puzzles daily. You are missing simple combinations."
+        elif p == "Endgame":
+            if score >= 8: advice = "Study complex rook endings to squeeze wins from draws."
+            elif score >= 5: advice = "Learn key theoretical endgames (Lucena, Philidor, K+P vs K)."
+            else: advice = "Don't trade queens unless you are 100% sure the pawn ending is winning."
+            
+        phase_stats[p] = {
+            'avg_loss': round(avg_loss, 1), 
+            'score': score,
+            'accuracy_percent': accuracy_percent,
+            'blunder_rate': blunder_rate,
+            'advice': advice
+        }
 
     return {
         'games_analyzed': analyzed_games,
