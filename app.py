@@ -165,6 +165,7 @@ else:
                 st.session_state['game_data'] = df
                 st.session_state['opening_stats'] = opening_stats
                 st.session_state['player_stats'] = player_stats
+                st.session_state['raw_games'] = games
                 
                 # --- Generate Context for Chatbot ---
                 # --- Generate Context for Chatbot ---
@@ -410,12 +411,14 @@ else:
                 # --- Time Management Section ---
                 st.markdown("### ⏱️ Time Management Analysis")
                 
-                if 'games' in locals() and games:
+                raw_games = st.session_state.get('raw_games')
+                
+                if raw_games:
                     # Filter raw games list based on selected category to ensure Time Analysis matches the filter
                     if rating_category != "Overall":
-                        filtered_games = [g for g in games if g.get('speed') == rating_category.lower()]
+                        filtered_games = [g for g in raw_games if g.get('speed') == rating_category.lower()]
                     else:
-                        filtered_games = games
+                        filtered_games = raw_games
                         
                     time_stats = calculate_time_stats(filtered_games, username)
                     
