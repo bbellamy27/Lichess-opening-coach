@@ -258,15 +258,15 @@ def calculate_pacing_metrics(df, time_control):
     
     if avg_moves < lower:
         label = "Too Fast 🐇"
-        color = "orange"
+        color = "#FF4B4B" # Streamlit Red
         feedback = f"You are averaging only {avg_moves} moves per game. You might be resigning too early or playing too recklessly."
     elif avg_moves > upper:
         label = "Too Slow 🐢"
-        color = "blue"
+        color = "#1E88E5" # Vibrant Blue
         feedback = f"You are averaging {avg_moves} moves per game. Your games are very long grinds. Work on converting advantages faster."
     else:
         label = "Just Right 🎯"
-        color = "green"
+        color = "#00C853" # Vibrant Green
         feedback = f"Your average game length ({avg_moves} moves) is typical for {tc} chess. Good pacing!"
         
     return {

@@ -346,34 +346,56 @@ else:
                     fig_gauge = go.Figure(go.Indicator(
                         mode = "gauge+number",
                         value = risk_data['score'],
-                        title = {'text': f"Volatility: {risk_data['label']}"},
+                        title = {'text': f"Volatility: {risk_data['label']}", 'font': {'size': 16}},
                         gauge = {
-                            'axis': {'range': [0, 10]},
-                            'bar': {'color': "darkblue"},
+                            'axis': {'range': [0, 10], 'tickwidth': 1, 'tickcolor': "white"},
+                            'bar': {'color': "white", 'thickness': 0.3}, # Thinner bar, white for contrast
+                            'bgcolor': "rgba(0,0,0,0)",
+                            'borderwidth': 2,
+                            'bordercolor': "white",
                             'steps': [
-                                {'range': [0, 3], 'color': "lightgreen"},
-                                {'range': [3, 7], 'color': "yellow"},
-                                {'range': [7, 10], 'color': "red"}
+                                {'range': [0, 3], 'color': "#00C853"}, # Green
+                                {'range': [3, 7], 'color': "#FFD600"}, # Yellow
+                                {'range': [7, 10], 'color': "#D50000"}  # Red
                             ],
                             'threshold': {
-                                'line': {'color': "black", 'width': 4},
+                                'line': {'color': "white", 'width': 4},
                                 'thickness': 0.75,
                                 'value': risk_data['score']
                             }
-                        }
+                        },
+                        number = {'font': {'size': 40, 'color': "white"}} # Make number big and visible
                     ))
-                    fig_gauge.update_layout(height=250, margin=dict(l=20, r=20, t=50, b=20))
+                    # Adjust layout to prevent overlapping
+                    fig_gauge.update_layout(
+                        height=220, 
+                        margin=dict(l=30, r=30, t=50, b=10),
+                        paper_bgcolor="rgba(0,0,0,0)",
+                        font={'color': "white"}
+                    )
                     st.plotly_chart(fig_gauge, use_container_width=True)
                     
                 with r_col2:
-                    # Pacing Metric Card
+                    # Pacing Metric Card - Improved Visuals
                     st.markdown(f"""
-                    <div style="background-color: #262730; padding: 20px; border-radius: 10px; text-align: center;">
-                        <h3 style="margin:0; color: #fafafa;">Pacing</h3>
-                        <h1 style="margin:0; color: {pacing_data['color']}; font-size: 3em;">{pacing_data['label'].split()[0]}</h1>
-                        <p style="color: #a7a6a2;">{pacing_data['label'].split()[1] if len(pacing_data['label'].split()) > 1 else ''}</p>
-                        <hr>
-                        <p>Avg Moves: <b>{pacing_data['avg_moves']}</b></p>
+                    <div style="
+                        background-color: #1E1E1E; 
+                        padding: 20px; 
+                        border-radius: 15px; 
+                        text-align: center; 
+                        border: 2px solid #333;
+                        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+                        height: 220px;
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                    ">
+                        <h4 style="margin:0; color: #B0B0B0; text-transform: uppercase; letter-spacing: 1px; font-size: 14px;">Pacing Analysis</h4>
+                        <h1 style="margin: 10px 0; color: {pacing_data['color']}; font-size: 2.5em; font-weight: 800;">{pacing_data['label'].split()[0]}</h1>
+                        <p style="color: #E0E0E0; font-size: 1.2em; margin-bottom: 15px;">{pacing_data['label'].split()[1] if len(pacing_data['label'].split()) > 1 else ''}</p>
+                        <div style="background-color: #333; padding: 5px 10px; border-radius: 20px; display: inline-block; margin: 0 auto;">
+                            <p style="margin:0; color: #fff; font-size: 0.9em;">Avg Moves: <b>{pacing_data['avg_moves']}</b></p>
+                        </div>
                     </div>
                     """, unsafe_allow_html=True)
 
