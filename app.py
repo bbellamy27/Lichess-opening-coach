@@ -471,7 +471,7 @@ else:
                     else:
                         filtered_games = raw_games
                         
-                    time_stats = calculate_time_stats(filtered_games, username, time_control=rating_category)
+                    time_stats = calculate_time_stats(filtered_games, username, time_control=rating_category, pacing_label=pacing_data['label'])
                     
                     t_col1, t_col2, t_col3 = st.columns(3)
                     with t_col1:

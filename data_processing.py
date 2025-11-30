@@ -389,7 +389,7 @@ import chess
 import chess.pgn
 import io
 
-def calculate_time_stats(games, username, time_control="overall"):
+def calculate_time_stats(games, username, time_control="overall", pacing_label="N/A"):
     """
     Calculate average time spent per move in Opening, Middlegame, and Endgame.
     
@@ -402,6 +402,7 @@ def calculate_time_stats(games, username, time_control="overall"):
         games (list): List of raw game dictionaries (must include 'clocks').
         username (str): User to analyze.
         time_control (str): 'rapid', 'blitz', 'bullet', 'classical', or 'overall'.
+        pacing_label (str): The archetype from Pacing Analysis (e.g., "Suicidal Sprinter").
         
     Returns:
         dict: {
@@ -474,60 +475,60 @@ def calculate_time_stats(games, username, time_control="overall"):
     mid_avg = safe_avg(middlegame_times)
     end_avg = safe_avg(endgame_times)
     
-    # --- Generate Feedback ---
-    tc = time_control.lower()
+    # --- Generate Feedback with Pacing Synergy ---
     
-    # Thresholds: (Min Ideal, Max Ideal)
-    # Below Min = Too Fast, Above Max = Too Slow
-    thresholds = {
-        'bullet': {'op': (0.5, 2.0), 'mid': (0.8, 3.0), 'end': (0.8, 3.0)},
-        'blitz':  {'op': (2.0, 6.0), 'mid': (3.0, 10.0), 'end': (3.0, 10.0)},
-        'rapid':  {'op': (4.0, 15.0), 'mid': (8.0, 25.0), 'end': (8.0, 25.0)},
-        'classical': {'op': (10.0, 40.0), 'mid': (30.0, 120.0), 'end': (20.0, 90.0)},
-        'overall': {'op': (3.0, 10.0), 'mid': (5.0, 20.0), 'end': (5.0, 20.0)}
-    }
-    
-    t = thresholds.get(tc, thresholds['overall'])
-    
-    def get_feedback(val, limits, phase):
-        low, high = limits
+    # Helper to generate phase feedback
+    def get_feedback(phase, avg_time, target_range, pacing_label):
+        low, high = target_range
         
-        # Advice Dictionary
-        advice = {
-            'opening': {
-                'fast': "Reason: Rushing openings leads to poor structures.\nTip: Check for tactical refutations before moving.",
-                'slow': "Reason: Over-thinking theory wastes clock.\nTip: Trust your prep and develop pieces naturally.",
-                'good': "Reason: You are balancing development and caution well."
-            },
-            'middlegame': {
-                'fast': "Reason: Speed here causes tactical blunders.\nTip: Calculate at least 2 candidate moves in complex positions.",
-                'slow': "Reason: Time trouble will ruin your endgame.\nTip: Don't calculate everything; rely on patterns.",
-                'good': "Reason: You are allocating time correctly for calculations."
-            },
-            'endgame': {
-                'fast': "Reason: Endgames require precision, not speed.\nTip: Count tempos and calculate pawn races carefully.",
-                'slow': "Reason: You risk flagging in winning positions.\nTip: If it's theoretical, play confidently.",
-                'good': "Reason: You are navigating the technical phase well."
-            }
-        }
-        
-        if val < low:
-            status = f"Too Fast! 🐇"
-            details = advice[phase]['fast']
-        elif val > high:
-            status = f"Too Slow! 🐢"
-            details = advice[phase]['slow']
+        # Base Feedback
+        if avg_time < low:
+            status = "Too Fast"
+            reason = "You are playing faster than recommended."
+            tip = "Slow down and check for blunders."
+        elif avg_time > high:
+            status = "Too Slow"
+            reason = "You are burning too much time."
+            tip = "Trust your intuition and move faster."
         else:
-            status = f"Perfect Pace! 🎯"
-            details = advice[phase]['good']
+            status = "On Target"
+            reason = "Your speed is optimal."
+            tip = "Maintain this rhythm."
             
-        return f"**{status}**\n\n{details}\n\n**Target:** {low}-{high}s"
+        # Synergy: Override/Augment based on Pacing Archetype
+        if "Sprinter" in pacing_label or "Impulsive" in pacing_label or "Too Fast" in pacing_label:
+            if status == "On Target":
+                tip += " But given your 'Fast' style, be careful not to rush critical moments."
+            elif status == "Too Fast":
+                reason = f"As a '{pacing_label.split()[0]}', you are rushing this phase."
+                tip = "FORCE yourself to double-check tactics. Sit on your hands."
+                
+        elif "Time Trouble" in pacing_label or "Paralysis" in pacing_label or "Too Slow" in pacing_label:
+            if status == "On Target":
+                tip += " Good job staying on target despite your tendency to play slow."
+            elif status == "Too Slow":
+                reason = f"Typical '{pacing_label.split()[0]}' behavior. You are overthinking."
+                tip = "Set a strict time limit per move. Good enough is better than perfect."
+                
+        return f"**{status}**<br>Reason: {reason}<br>Tip: {tip}<br>Target: {low}-{high}s"
 
+    # Define Targets based on TC
+    targets = {
+        'bullet': {'open': (0.5, 2), 'mid': (0.5, 3), 'end': (0.5, 3)},
+        'blitz': {'open': (2, 5), 'mid': (3, 8), 'end': (3, 10)},
+        'rapid': {'open': (5, 10), 'mid': (8, 20), 'end': (8, 25)},
+        'classical': {'open': (10, 30), 'mid': (20, 60), 'end': (20, 90)},
+        'overall': {'open': (5, 15), 'mid': (10, 30), 'end': (10, 40)}
+    }
+    t = targets.get(time_control.lower(), targets['overall'])
+    
     return {
         'opening_avg': op_avg,
-        'opening_feedback': get_feedback(op_avg, t['op'], "opening"),
+        'opening_feedback': get_feedback("Opening", op_avg, t['open'], pacing_label),
+        
         'middlegame_avg': mid_avg,
-        'middlegame_feedback': get_feedback(mid_avg, t['mid'], "middlegame"),
+        'middlegame_feedback': get_feedback("Middlegame", mid_avg, t['mid'], pacing_label),
+        
         'endgame_avg': end_avg,
-        'endgame_feedback': get_feedback(end_avg, t['end'], "endgame")
+        'endgame_feedback': get_feedback("Endgame", end_avg, t['end'], pacing_label)
     }
