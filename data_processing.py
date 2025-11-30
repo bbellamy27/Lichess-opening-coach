@@ -383,12 +383,37 @@ def calculate_time_stats(games, username, time_control="overall"):
     
     def get_feedback(val, limits, phase):
         low, high = limits
+        
+        # Advice Dictionary
+        advice = {
+            'opening': {
+                'fast': "Reason: Rushing openings leads to poor structures.\nTip: Check for tactical refutations before moving.",
+                'slow': "Reason: Over-thinking theory wastes clock.\nTip: Trust your prep and develop pieces naturally.",
+                'good': "Reason: You are balancing development and caution well."
+            },
+            'middlegame': {
+                'fast': "Reason: Speed here causes tactical blunders.\nTip: Calculate at least 2 candidate moves in complex positions.",
+                'slow': "Reason: Time trouble will ruin your endgame.\nTip: Don't calculate everything; rely on patterns.",
+                'good': "Reason: You are allocating time correctly for calculations."
+            },
+            'endgame': {
+                'fast': "Reason: Endgames require precision, not speed.\nTip: Count tempos and calculate pawn races carefully.",
+                'slow': "Reason: You risk flagging in winning positions.\nTip: If it's theoretical, play confidently.",
+                'good': "Reason: You are navigating the technical phase well."
+            }
+        }
+        
         if val < low:
-            return f"Too fast! You're rushing the {phase}. Take a moment to think."
+            status = f"Too Fast! 🐇"
+            details = advice[phase]['fast']
         elif val > high:
-            return f"Too slow. You're spending too much time in the {phase}. Watch the clock!"
+            status = f"Too Slow! 🐢"
+            details = advice[phase]['slow']
         else:
-            return f"Good pacing. Your time spent in the {phase} is ideal for {tc}."
+            status = f"Perfect Pace! 🎯"
+            details = advice[phase]['good']
+            
+        return f"**{status}**\n\n{details}\n\n**Target:** {low}-{high}s"
 
     return {
         'opening_avg': op_avg,

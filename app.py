@@ -425,13 +425,13 @@ else:
                     t_col1, t_col2, t_col3 = st.columns(3)
                     with t_col1:
                         st.metric("Opening (Moves 1-10)", f"{time_stats['opening_avg']}s", delta_color="off", help="Avg time per move in opening")
-                        st.caption(time_stats['opening_feedback'])
+                        st.markdown(time_stats['opening_feedback'])
                     with t_col2:
                         st.metric("Middlegame (Queens On)", f"{time_stats['middlegame_avg']}s", delta_color="off", help="Avg time per move while Queens are on board")
-                        st.caption(time_stats['middlegame_feedback'])
+                        st.markdown(time_stats['middlegame_feedback'])
                     with t_col3:
                         st.metric("Endgame (Queens Off)", f"{time_stats['endgame_avg']}s", delta_color="off", help="Avg time per move after Queens are traded")
-                        st.caption(time_stats['endgame_feedback'])
+                        st.markdown(time_stats['endgame_feedback'])
                     
                     st.divider()
                 else:
