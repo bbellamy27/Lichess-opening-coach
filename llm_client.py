@@ -72,15 +72,7 @@ class LLMClient:
             response = self.model.generate_content(prompt)
             return response.text
         except Exception as e:
-            # Fallback mechanism: If the first model fails, try 'gemini-pro'
-            if "404" in str(e) or "not found" in str(e).lower():
-                try:
-                    print("Retrying with 'gemini-pro' model...")
-                    fallback_model = genai.GenerativeModel('gemini-pro')
-                    response = fallback_model.generate_content(prompt)
-                    return response.text
-                except Exception as e2:
-                    return f"Error generating report (Fallback failed): {str(e2)}"
+        except Exception as e:
             return f"Error generating report: {str(e)}"
 
     def chat(self, messages):
@@ -122,13 +114,5 @@ class LLMClient:
             return response.text
             
         except Exception as e:
-             # Fallback mechanism
-            if "404" in str(e) or "not found" in str(e).lower():
-                try:
-                    fallback_model = genai.GenerativeModel('gemini-pro')
-                    chat = fallback_model.start_chat(history=history)
-                    response = chat.send_message(last_user_message)
-                    return response.text
-                except Exception as e2:
-                    return f"Error with Gemini Chat (Fallback failed): {str(e2)}"
+        except Exception as e:
             return f"Error with Gemini Chat: {str(e)}"
