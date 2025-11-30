@@ -106,7 +106,9 @@ st.markdown("""
 
 # --- Main Navigation ---
 st.sidebar.title("Navigation")
-app_mode = st.sidebar.radio("Go to:", ["🏠 Home / Analyzer", "♟️ Best Move Calculator", "💬 AI Chatbot"])
+# --- Main Navigation ---
+st.sidebar.title("Navigation")
+app_mode = st.sidebar.radio("Go to:", ["🏠 Home / Analyzer", "♟️ Best Move Calculator"])
 
 # ==========================================
 # MODE 1: HOME / ANALYZER (Original App)
@@ -256,38 +258,46 @@ elif app_mode == "♟️ Best Move Calculator":
             st.success(result)
 
 # ==========================================
-# MODE 3: AI CHATBOT
+# SIDEBAR CHATBOT (Persistent)
 # ==========================================
-elif app_mode == "💬 AI Chatbot":
-    st.title("💬 Chess Coach Chat")
-    st.markdown("Ask me anything about chess! Strategy, openings, mindset, or rules.")
+with st.sidebar:
+    st.markdown("---")
+    st.subheader("💬 AI Coach Chat")
     
     # Initialize chat history
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    # Display chat messages from history on app rerun
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+    # Chat Expander
+    with st.expander("Open Chat", expanded=False):
+        # Display chat messages
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
 
-    # Accept user input
-    if prompt := st.chat_input("How do I play against the Sicilian?"):
-        # Add user message to chat history
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        # Display user message in chat message container
-        with st.chat_message("user"):
-            st.markdown(prompt)
+        # Accept user input
+        if prompt := st.chat_input("Ask me about chess..."):
+            # Add user message to chat history
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            # Display user message
+            with st.chat_message("user"):
+                st.markdown(prompt)
 
-        # Display assistant response in chat message container
-        with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
-                client = PuterClient()
-                response = client.chat(st.session_state.messages)
-                st.markdown(response)
-        
-        # Add assistant response to chat history
-        st.session_state.messages.append({"role": "assistant", "content": response})
+            # Generate Response
+            with st.chat_message("assistant"):
+                with st.spinner("Thinking..."):
+                    # Logic: Use Gemini if Key exists, else Puter
+                    if os.getenv("GOOGLE_API_KEY"):
+                        client = LLMClient()
+                        response = client.chat(st.session_state.messages)
+                    else:
+                        client = PuterClient()
+                        response = client.chat(st.session_state.messages)
+                    
+                    st.markdown(response)
+            
+            # Add assistant response to chat history
+            st.session_state.messages.append({"role": "assistant", "content": response})
 
 # --- Sidebar Footer ---
 with st.sidebar:

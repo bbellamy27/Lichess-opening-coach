@@ -82,3 +82,53 @@ class LLMClient:
                 except Exception as e2:
                     return f"Error generating report (Fallback failed): {str(e2)}"
             return f"Error generating report: {str(e)}"
+
+    def chat(self, messages):
+        """
+        Send a chat history to Gemini and get a response.
+        
+        Args:
+            messages (list): List of message dicts [{'role': 'user', 'content': '...'}, ...]
+            
+        Returns:
+            str: The assistant's response.
+        """
+        if not self.model:
+            return "Error: Google API Key not configured."
+            
+        try:
+            # Convert OpenAI-style messages to Gemini history
+            history = []
+            last_user_message = ""
+            
+            for msg in messages:
+                role = "user" if msg["role"] == "user" else "model"
+                if msg["role"] == "system":
+                    # Prepend system prompt to the first user message or handle separately
+                    # For simplicity, we'll skip system prompt in history for now or handle it differently
+                    continue
+                
+                if role == "user":
+                    last_user_message = msg["content"]
+                else:
+                    history.append({"role": "user", "parts": [last_user_message]}) # Gemini expects user before model
+                    history.append({"role": "model", "parts": [msg["content"]]})
+            
+            # Start chat session
+            chat = self.model.start_chat(history=history)
+            
+            # Send the last message
+            response = chat.send_message(last_user_message)
+            return response.text
+            
+        except Exception as e:
+             # Fallback mechanism
+            if "404" in str(e) or "not found" in str(e).lower():
+                try:
+                    fallback_model = genai.GenerativeModel('gemini-pro')
+                    chat = fallback_model.start_chat(history=history)
+                    response = chat.send_message(last_user_message)
+                    return response.text
+                except Exception as e2:
+                    return f"Error with Gemini Chat (Fallback failed): {str(e2)}"
+            return f"Error with Gemini Chat: {str(e)}"
