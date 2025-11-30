@@ -525,6 +525,7 @@ else:
             st.subheader("🤖 Personalized Coaching Report")
             
             # Calculate Analysis Metrics (ACPL, Blunders)
+            raw_games = st.session_state.get('raw_games')
             analysis_stats = None
             if raw_games:
                 if rating_category != "Overall":
