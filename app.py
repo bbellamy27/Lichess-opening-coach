@@ -1,4 +1,4 @@
-```python
+
 import streamlit as st
 import pandas as pd
 from api_client import LichessClient
