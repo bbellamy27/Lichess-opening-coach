@@ -71,6 +71,46 @@ class PuterClient:
         except Exception as e:
             return f"⚠️ Error generating report with Llama: {e}"
 
+    def chat(self, messages):
+        """
+        Send a chat history to Llama 3.1 and get a response.
+        
+        Args:
+            messages (list): List of message dicts [{'role': 'user', 'content': '...'}, ...]
+            
+        Returns:
+            str: The assistant's response.
+        """
+        # Add system prompt if not present at the start
+        system_prompt = {
+            "role": "system", 
+            "content": (
+                "You are 'Coach', a friendly chess coach and study assistant. "
+                "You explain concepts clearly, give practical improvement advice, "
+                "and stay supportive. You can answer chess questions, study plans, "
+                "emotions, mindset, or strategy. Always be helpful and positive."
+            )
+        }
+        
+        # Create a copy to avoid modifying the original list in session state
+        full_messages = [system_prompt] + messages
+        
+        payload = {
+            "model": self.model,
+            "messages": full_messages
+        }
+
+        headers = {"Content-Type": "application/json"}
+
+        try:
+            response = requests.post(self.url, headers=headers, json=payload)
+            response.raise_for_status()
+            data = response.json()
+            return data["choices"][0]["message"]["content"]
+        except Exception as e:
+            return f"⚠️ Error contacting Coach: {e}"
+
+
 if __name__ == "__main__":
     # Test client
     client = PuterClient()

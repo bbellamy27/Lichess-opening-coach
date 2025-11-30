@@ -130,45 +130,86 @@ if analyze_btn:
     if not games:
         st.error(f"No games found for user '{username}' or API error.")
     else:
-        # --- Data Processing ---
-        df = process_games(games, username)
-        opening_stats = get_opening_stats(df)
-        
-        # --- Calculate Player Metrics ---
-        total_games = len(df)
-        win_count = len(df[df['result'] == 'Win'])
-        loss_count = len(df[df['result'] == 'Loss'])
-        draw_count = len(df[df['result'] == 'Draw'])
-        win_rate = win_count / total_games if total_games > 0 else 0
-        current_rating = df.iloc[0]['user_rating'] if not df.empty else 'N/A'
-        
-        player_stats = {
-            'username': username,
-            'total_games': total_games,
-            'current_rating': current_rating,
-            'win_rate': win_rate
-        }
+# --- Main Navigation ---
+st.sidebar.title("Navigation")
+app_mode = st.sidebar.radio("Go to:", ["🏠 Home / Analyzer", "♟️ Best Move Calculator", "💬 AI Chatbot"])
+
+# ==========================================
+# MODE 1: HOME / ANALYZER (Original App)
+# ==========================================
+if app_mode == "🏠 Home / Analyzer":
+    st.title("♟️ Lichess Opening Coach")
+    st.markdown("Analyze your games, find your weaknesses, and get AI coaching.")
+
+    # Sidebar Inputs
+    st.sidebar.header("Settings")
+    username = st.sidebar.text_input("Lichess Username", value="DrNykterstein")
+    num_games = st.sidebar.slider("Number of Games", min_value=10, max_value=500, value=100)
+    
+    # Google API Key Input
+    api_key = st.sidebar.text_input("Google API Key (Optional)", type="password", help="Required for Gemini. Leave empty to use free Llama.")
+    if api_key:
+        os.environ["GOOGLE_API_KEY"] = api_key
+
+    # Analyze Button
+    if st.sidebar.button("Analyze Games"):
+        with st.spinner(f"Fetching games for {username}..."):
+            client = LichessClient() # Assuming LichessClient doesn't need username in constructor
+            games = client.get_user_games(username, max_games=num_games)
+            
+            if games:
+                df = process_games(games, username)
+                opening_stats = get_opening_stats(df)
+                
+                # Calculate Player Metrics
+                total_games = len(df)
+                win_count = len(df[df['result'] == 'Win'])
+                loss_count = len(df[df['result'] == 'Loss'])
+                draw_count = len(df[df['result'] == 'Draw'])
+                win_rate = win_count / total_games if total_games > 0 else 0
+                current_rating = df.iloc[0]['user_rating'] if not df.empty else 'N/A'
+
+                player_stats = {
+                    'username': username,
+                    'total_games': total_games,
+                    'current_rating': current_rating,
+                    'win_rate': win_rate
+                }
+                
+                # Store data in session state
+                st.session_state['game_data'] = df
+                st.session_state['opening_stats'] = opening_stats
+                st.session_state['player_stats'] = player_stats
+                st.success(f"Successfully loaded {len(df)} games!")
+            else:
+                st.error("No games found or API error.")
+
+    # Display Data if Available
+    if 'game_data' in st.session_state:
+        df = st.session_state['game_data']
+        opening_stats = st.session_state['opening_stats']
+        player_stats = st.session_state['player_stats']
         
         # --- Header Section (Profile) ---
         st.markdown(f"""
         <div class="profile-header">
             <div class="profile-flag">♟️</div>
-            <div class="profile-name">{username}</div>
+            <div class="profile-name">{player_stats['username']}</div>
             <div style="color: #a7a6a2;">🇺🇸</div>
         </div>
         """, unsafe_allow_html=True)
         
         # --- Summary Cards ---
         col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Games Played", f"{total_games}")
-        col2.metric("Current Rating", f"{current_rating}")
-        col3.metric("Win Rate", f"{win_rate:.1%}", delta=f"{win_count} Won")
+        col1.metric("Games Played", f"{player_stats['total_games']}")
+        col2.metric("Current Rating", f"{player_stats['current_rating']}")
+        col3.metric("Win Rate", f"{player_stats['win_rate']:.1%}", delta=f"{len(df[df['result'] == 'Win'])} Won")
         col4.metric("Top Opening", opening_stats.iloc[0]['opening_name'] if not opening_stats.empty else "N/A")
         
         st.divider()
         
         # --- Tabs for Analysis Sections ---
-        tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Data Overview", "📈 Basic EDA", "🧠 Advanced Insights", "🤖 AI Coach", "♟️ Engine"])
+        tab1, tab2, tab3, tab4 = st.tabs(["📊 Data Overview", "📈 Basic EDA", "🧠 Advanced Insights", "🤖 AI Coach"])
         
         # Tab 1: Raw Data Tables
         with tab1:
@@ -178,7 +219,7 @@ if analyze_btn:
             st.subheader("Opening Statistics")
             st.dataframe(opening_stats, use_container_width=True)
             
-        # Tab 2: Basic Visualizations
+        # Tab 2: Basic EDA
         with tab2:
             st.subheader("Performance Overview")
             col1, col2 = st.columns(2)
@@ -189,7 +230,7 @@ if analyze_btn:
                 st.plotly_chart(plot_rating_trend(df), use_container_width=True)
                 st.plotly_chart(plot_win_rate_by_opening(opening_stats), use_container_width=True)
         
-        # Tab 3: Advanced Analytics (Phase 2 Features)
+        # Tab 3: Advanced Insights
         with tab3:
             st.subheader("Deep Dive Analytics")
             col1, col2 = st.columns(2)
@@ -205,7 +246,7 @@ if analyze_btn:
                 # Correlation Heatmap
                 st.plotly_chart(plot_correlation_heatmap(df), use_container_width=True)
                 
-        # Tab 4: AI Coach (Gemini Integration)
+        # Tab 4: AI Coach
         with tab4:
             st.subheader("🤖 Personalized Coaching Report")
             
@@ -216,25 +257,65 @@ if analyze_btn:
                     report = llm.generate_coaching_report(player_stats, opening_stats)
                     st.markdown(report)
             else:
-                # Fallback to Puter (Llama 3.1)
                 st.info("ℹ️ Using Free Llama 3.1 Coach (No Google API Key detected)")
                 with st.spinner("Generating insights with Llama 3.1..."):
                     llm = PuterClient()
                     report = llm.generate_coaching_report(player_stats, opening_stats)
                     st.markdown(report)
-                    
-        # Tab 5: Chess Engine
-        with tab5:
-            st.subheader("♟️ Best Move Calculator")
-            st.markdown("Enter a FEN position to get the best move from Stockfish.")
-            
-            fen_input = st.text_input("FEN String", value="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-            
-            if st.button("Calculate Best Move"):
-                with st.spinner("Thinking..."):
-                    engine = EngineClient()
-                    result = engine.get_best_move(fen_input)
-                    st.success(result)
-else:
-    # Initial State Message
-    st.info("👈 Enter a username and click 'Analyze Games' to start.")
+    else:
+        # Initial State Message
+        st.info("👈 Enter a username and click 'Analyze Games' to start.")
+
+# ==========================================
+# MODE 2: BEST MOVE CALCULATOR (Engine)
+# ==========================================
+elif app_mode == "♟️ Best Move Calculator":
+    st.title("♟️ Best Move Calculator")
+    st.markdown("Enter a FEN position to get the best move from Stockfish.")
+    
+    fen_input = st.text_input("FEN String", value="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+    
+    if st.button("Calculate Best Move"):
+        with st.spinner("Thinking..."):
+            engine = EngineClient()
+            result = engine.get_best_move(fen_input)
+            st.success(result)
+
+# ==========================================
+# MODE 3: AI CHATBOT
+# ==========================================
+elif app_mode == "💬 AI Chatbot":
+    st.title("💬 Chess Coach Chat")
+    st.markdown("Ask me anything about chess! Strategy, openings, mindset, or rules.")
+    
+    # Initialize chat history
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+
+    # Display chat messages from history on app rerun
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+    # Accept user input
+    if prompt := st.chat_input("How do I play against the Sicilian?"):
+        # Add user message to chat history
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        # Display user message in chat message container
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+        # Display assistant response in chat message container
+        with st.chat_message("assistant"):
+            with st.spinner("Thinking..."):
+                client = PuterClient()
+                response = client.chat(st.session_state.messages)
+                st.markdown(response)
+        
+        # Add assistant response to chat history
+        st.session_state.messages.append({"role": "assistant", "content": response})
+
+# --- Sidebar Footer ---
+with st.sidebar:
+    st.markdown("---")
+    st.markdown("Created by: Brian & Harold")
