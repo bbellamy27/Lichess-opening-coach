@@ -324,9 +324,9 @@ else:
             st.divider()
             st.subheader("Stats by Time Control")
             
-            tc_tabs = st.tabs(["Rapid", "Blitz", "Classical"])
+            tc_tabs = st.tabs(["Rapid", "Blitz", "Classical", "Bullet"])
             
-            for i, tc in enumerate(['rapid', 'blitz', 'classical']):
+            for i, tc in enumerate(['rapid', 'blitz', 'classical', 'bullet']):
                 with tc_tabs[i]:
                     df_tc = df[df['speed'] == tc]
                     if not df_tc.empty:
