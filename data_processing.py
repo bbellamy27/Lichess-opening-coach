@@ -223,3 +223,55 @@ def calculate_risk_metrics(df):
         'mistakes': mistakes,
         'improvement': improvement
     }
+
+def calculate_pacing_metrics(df, time_control):
+    """
+    Calculate a 'Pacing' score (Fast/Slow/Right) based on avg game length and Time Control.
+    
+    Args:
+        df (pd.DataFrame): Filtered dataframe.
+        time_control (str): 'rapid', 'blitz', 'bullet', 'classical', or 'overall'.
+        
+    Returns:
+        dict: { 'label': str, 'color': str, 'avg_moves': int, 'feedback': str }
+    """
+    if df.empty:
+        return {'label': "N/A", 'color': "gray", 'avg_moves': 0, 'feedback': "No data."}
+        
+    avg_ply = df['ply_count'].mean()
+    avg_moves = int(avg_ply / 2)
+    
+    tc = time_control.lower()
+    
+    # Thresholds (Lower Bound, Upper Bound)
+    # Below Lower = Too Fast
+    # Above Upper = Too Slow
+    thresholds = {
+        'bullet': (15, 45),
+        'blitz': (20, 50),
+        'rapid': (25, 60),
+        'classical': (30, 70),
+        'overall': (20, 60) # Generic fallback
+    }
+    
+    lower, upper = thresholds.get(tc, (20, 60))
+    
+    if avg_moves < lower:
+        label = "Too Fast 🐇"
+        color = "orange"
+        feedback = f"You are averaging only {avg_moves} moves per game. You might be resigning too early or playing too recklessly."
+    elif avg_moves > upper:
+        label = "Too Slow 🐢"
+        color = "blue"
+        feedback = f"You are averaging {avg_moves} moves per game. Your games are very long grinds. Work on converting advantages faster."
+    else:
+        label = "Just Right 🎯"
+        color = "green"
+        feedback = f"Your average game length ({avg_moves} moves) is typical for {tc} chess. Good pacing!"
+        
+    return {
+        'label': label,
+        'color': color,
+        'avg_moves': avg_moves,
+        'feedback': feedback
+    }

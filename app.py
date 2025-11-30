@@ -2,7 +2,7 @@
 import streamlit as st
 import pandas as pd
 from api_client import LichessClient
-from data_processing import process_games, get_opening_stats, calculate_risk_metrics
+from data_processing import process_games, get_opening_stats, calculate_risk_metrics, calculate_pacing_metrics
 from eda import plot_win_rate_by_color, plot_rating_trend, plot_top_openings, plot_win_rate_by_opening, plot_time_heatmap, plot_opponent_scatter, plot_termination_pie, plot_correlation_heatmap
 from llm_client import LLMClient
 from engine_client import EngineClient
@@ -331,68 +331,87 @@ st.sidebar.header("Settings")
             
         # Tab 2: Basic EDA
         with tab2:
-            st.subheader("Performance Overview")
-            
-            # --- Risk Analysis Section ---
-            risk_data = calculate_risk_metrics(df)
-            
-            st.markdown("### ⚠️ Risk Analysis")
-            r_col1, r_col2 = st.columns([1, 2])
-            
-            with r_col1:
-                # Gauge Chart for Risk Score
-                fig_gauge = go.Figure(go.Indicator(
-                    mode = "gauge+number",
-                    value = risk_data['score'],
-                    title = {'text': f"Volatility Score: {risk_data['label']}"},
-                    gauge = {
-                        'axis': {'range': [0, 10]},
-                        'bar': {'color': "darkblue"},
-                        'steps': [
-                            {'range': [0, 3], 'color': "lightgreen"},
-                            {'range': [3, 7], 'color': "yellow"},
-                            {'range': [7, 10], 'color': "red"}
-                        ],
-                        'threshold': {
-                            'line': {'color': "black", 'width': 4},
-                            'thickness': 0.75,
-                            'value': risk_data['score']
-                        }
-                    }
-                ))
-                fig_gauge.update_layout(height=300, margin=dict(l=20, r=20, t=50, b=20))
-                st.plotly_chart(fig_gauge, use_container_width=True)
+            if not df.empty:
+                st.subheader("Performance Overview")
                 
-            with r_col2:
-                st.info(f"**Feedback:** {risk_data['feedback']}")
-                st.warning(f"**Potential Mistakes:** {risk_data['mistakes']}")
-                st.success(f"**How to Improve:** {risk_data['improvement']}")
-            
-            st.divider()
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                st.plotly_chart(plot_win_rate_by_color(df), use_container_width=True)
-                st.plotly_chart(plot_top_openings(df), use_container_width=True)
-            with col2:
-                st.plotly_chart(plot_rating_trend(df), use_container_width=True)
-                st.plotly_chart(plot_win_rate_by_opening(opening_stats), use_container_width=True)
+                # --- Pacing & Risk Analysis Section ---
+                risk_data = calculate_risk_metrics(df)
+                pacing_data = calculate_pacing_metrics(df, rating_category)
+                
+                st.markdown("### ⚠️ Style & Pacing Analysis")
+                r_col1, r_col2, r_col3 = st.columns([1, 1, 2])
+                
+                with r_col1:
+                    # Gauge Chart for Risk Score
+                    fig_gauge = go.Figure(go.Indicator(
+                        mode = "gauge+number",
+                        value = risk_data['score'],
+                        title = {'text': f"Volatility: {risk_data['label']}"},
+                        gauge = {
+                            'axis': {'range': [0, 10]},
+                            'bar': {'color': "darkblue"},
+                            'steps': [
+                                {'range': [0, 3], 'color': "lightgreen"},
+                                {'range': [3, 7], 'color': "yellow"},
+                                {'range': [7, 10], 'color': "red"}
+                            ],
+                            'threshold': {
+                                'line': {'color': "black", 'width': 4},
+                                'thickness': 0.75,
+                                'value': risk_data['score']
+                            }
+                        }
+                    ))
+                    fig_gauge.update_layout(height=250, margin=dict(l=20, r=20, t=50, b=20))
+                    st.plotly_chart(fig_gauge, use_container_width=True)
+                    
+                with r_col2:
+                    # Pacing Metric Card
+                    st.markdown(f"""
+                    <div style="background-color: #262730; padding: 20px; border-radius: 10px; text-align: center;">
+                        <h3 style="margin:0; color: #fafafa;">Pacing</h3>
+                        <h1 style="margin:0; color: {pacing_data['color']}; font-size: 3em;">{pacing_data['label'].split()[0]}</h1>
+                        <p style="color: #a7a6a2;">{pacing_data['label'].split()[1] if len(pacing_data['label'].split()) > 1 else ''}</p>
+                        <hr>
+                        <p>Avg Moves: <b>{pacing_data['avg_moves']}</b></p>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                with r_col3:
+                    st.info(f"**Risk Feedback:** {risk_data['feedback']}")
+                    st.warning(f"**Pacing Feedback:** {pacing_data['feedback']}")
+                    st.success(f"**Improvement:** {risk_data['improvement']}")
+                
+                st.divider()
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.plotly_chart(plot_win_rate_by_color(df), use_container_width=True)
+                    st.plotly_chart(plot_top_openings(df), use_container_width=True)
+                with col2:
+                    st.plotly_chart(plot_rating_trend(df), use_container_width=True)
+                    st.plotly_chart(plot_win_rate_by_opening(opening_stats), use_container_width=True)
+            else:
+                st.info(f"No games available for **{rating_category}**. Play some games to see stats!")
         
         # Tab 3: Advanced Insights
         with tab3:
-            st.subheader("Deep Dive Analytics")
-            col1, col2 = st.columns(2)
-            with col1:
-                # Heatmap of playing times
-                st.plotly_chart(plot_time_heatmap(df), use_container_width=True)
-                # Pie chart of game terminations
-                st.plotly_chart(plot_termination_pie(df), use_container_width=True)
-            with col2:
-                # Win rate vs Opponent Rating
-                st.plotly_chart(plot_opponent_scatter(df), use_container_width=True)
-                
-                # Correlation Heatmap
-                st.plotly_chart(plot_correlation_heatmap(df), use_container_width=True)
+            if not df.empty:
+                st.subheader("Deep Dive Analytics")
+                col1, col2 = st.columns(2)
+                with col1:
+                    # Heatmap of playing times
+                    st.plotly_chart(plot_time_heatmap(df), use_container_width=True)
+                    # Pie chart of game terminations
+                    st.plotly_chart(plot_termination_pie(df), use_container_width=True)
+                with col2:
+                    # Win rate vs Opponent Rating
+                    st.plotly_chart(plot_opponent_scatter(df), use_container_width=True)
+                    
+                    # Correlation Heatmap
+                    st.plotly_chart(plot_correlation_heatmap(df), use_container_width=True)
+            else:
+                st.info(f"No games available for **{rating_category}**. Play some games to see stats!")
                 
         # Tab 4: AI Coach
         with tab4:
