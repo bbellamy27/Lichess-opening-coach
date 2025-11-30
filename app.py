@@ -231,26 +231,47 @@ if app_mode == "🏠 Home / Analyzer":
         </div>
         """, unsafe_allow_html=True)
         
-        # --- Summary Cards ---
-        # Rating Selector
-        rating_category = st.selectbox("Select Rating Category", ["Overall", "Rapid", "Blitz", "Classical", "Bullet"], index=0)
+        # --- Global Time Control Filter ---
+        st.markdown("### ⏱️ Time Control Filter")
+        rating_category = st.selectbox("Select Game Mode", ["Overall", "Rapid", "Blitz", "Classical", "Bullet"], index=0)
         
-        # Calculate Rating based on selection
-        if rating_category == "Overall":
-            display_rating = player_stats['current_rating']
+        # Filter Data Globally
+        if rating_category != "Overall":
+            filtered_df = df[df['speed'] == rating_category.lower()]
         else:
-            # Filter by speed (lowercase)
-            tc_df = df[df['speed'] == rating_category.lower()]
-            if not tc_df.empty:
-                display_rating = tc_df.iloc[0]['user_rating']
-            else:
-                display_rating = "N/A"
+            filtered_df = df.copy()
+            
+        # Recalculate Stats based on Filter
+        if not filtered_df.empty:
+            # Update Opening Stats for filtered data
+            filtered_opening_stats = get_opening_stats(filtered_df)
+            
+            # Update Metrics
+            filtered_total_games = len(filtered_df)
+            filtered_wins = len(filtered_df[filtered_df['result'] == 'Win'])
+            filtered_win_rate = filtered_wins / filtered_total_games if filtered_total_games > 0 else 0
+            filtered_rating = filtered_df.iloc[0]['user_rating']
+            top_opening_name = filtered_opening_stats.iloc[0]['opening_name'] if not filtered_opening_stats.empty else "N/A"
+        else:
+            filtered_total_games = 0
+            filtered_rating = "N/A"
+            filtered_win_rate = 0
+            top_opening_name = "N/A"
+            filtered_opening_stats = pd.DataFrame()
 
+        # --- Summary Cards (Updated with Filtered Data) ---
         col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Games Played", f"{player_stats['total_games']}")
-        col2.metric(f"{rating_category} Rating", f"{display_rating}")
-        col3.metric("Win Rate", f"{player_stats['win_rate']:.1%}", delta=f"{len(df[df['result'] == 'Win'])} Won")
-        col4.metric("Top Opening", opening_stats.iloc[0]['opening_name'] if not opening_stats.empty else "N/A")
+        col1.metric("Games Played", f"{filtered_total_games}")
+        col2.metric(f"{rating_category} Rating", f"{filtered_rating}")
+        col3.metric("Win Rate", f"{filtered_win_rate:.1%}", delta=f"{filtered_wins} Won" if not filtered_df.empty else None)
+        col4.metric("Top Opening", top_opening_name)
+        
+        st.divider()
+        
+        # Override main variables for downstream use (Charts/Tables)
+        # This ensures all tabs use the filtered data
+        df = filtered_df
+        opening_stats = filtered_opening_stats
         
         st.divider()
         
