@@ -113,8 +113,8 @@ st.markdown("""
 # ==========================================
 # MODE 1: HOME / ANALYZER (Original App)
 # ==========================================
-st.title("♟️ Lichess Opening Coach")
-st.markdown("Analyze your games, find your weaknesses, and get AI coaching.")
+st.title("♟️ Chess Improvement Coach for Lichess")
+st.markdown("Analyze your games, find your weaknesses, and get AI coaching & advanced metrics.")
 
 # Sidebar Inputs
 st.sidebar.header("Settings")
