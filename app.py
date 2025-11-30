@@ -124,17 +124,19 @@ if app_mode == "🏠 Home / Analyzer":
     num_games = st.sidebar.slider("Number of Games", min_value=10, max_value=500, value=100)
     
     # AI Provider Selection
-    ai_provider = st.sidebar.selectbox("AI Provider", ["Google Gemini", "Groq (Llama 3)"])
+    ai_provider = st.sidebar.selectbox("AI Provider", ["Free Llama (Default)", "Google Gemini", "Groq (Llama 3)"])
     
     # Dynamic API Key Input
     if ai_provider == "Google Gemini":
         api_key = st.sidebar.text_input("Google API Key", type="password", help="Get it from aistudio.google.com")
         if api_key:
             os.environ["GOOGLE_API_KEY"] = api_key
-    else:
+    elif ai_provider == "Groq (Llama 3)":
         api_key = st.sidebar.text_input("Groq API Key", type="password", help="Get it from console.groq.com")
         if api_key:
             os.environ["GROQ_API_KEY"] = api_key
+    else:
+        st.sidebar.info("Using free Llama 3.1 via Puter. No key required!")
 
     # Analyze Button
     if st.sidebar.button("Analyze Games"):
@@ -258,15 +260,13 @@ if app_mode == "🏠 Home / Analyzer":
                     llm = GroqClient()
                     report = llm.generate_coaching_report(player_stats, opening_stats)
                     st.markdown(report)
+            elif ai_provider == "Free Llama (Default)":
+                 with st.spinner("Generating insights with Free Llama..."):
+                    llm = PuterClient()
+                    report = llm.generate_coaching_report(player_stats, opening_stats)
+                    st.markdown(report)
             else:
                 st.warning(f"⚠️ Please enter your {ai_provider} API Key in the sidebar.")
-                # Fallback to Puter if nothing else works (optional, but good for safety)
-                if not os.getenv("GOOGLE_API_KEY") and not os.getenv("GROQ_API_KEY"):
-                     st.info("ℹ️ Using Free Llama 3.1 Coach (Fallback)")
-                     with st.spinner("Generating insights with Llama 3.1..."):
-                        llm = PuterClient()
-                        report = llm.generate_coaching_report(player_stats, opening_stats)
-                        st.markdown(report)
     else:
         # Initial State Message
         st.info("👈 Enter a username and click 'Analyze Games' to start.")
@@ -326,7 +326,7 @@ with st.sidebar:
                         client = GroqClient()
                         response = client.chat(st.session_state.messages, context=context)
                     else:
-                        # Fallback
+                        # Default to Puter
                         client = PuterClient()
                         response = client.chat(st.session_state.messages, context=context)
                     
