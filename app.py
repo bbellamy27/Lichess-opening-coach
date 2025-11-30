@@ -6,6 +6,7 @@ from eda import plot_win_rate_by_color, plot_rating_trend, plot_top_openings, pl
 from llm_client import LLMClient
 from engine_client import EngineClient
 from puter_client import PuterClient
+from groq_client import GroqClient
 import os
 from dotenv import load_dotenv
 
@@ -122,10 +123,18 @@ if app_mode == "🏠 Home / Analyzer":
     username = st.sidebar.text_input("Lichess Username", value="DrNykterstein")
     num_games = st.sidebar.slider("Number of Games", min_value=10, max_value=500, value=100)
     
-    # Google API Key Input
-    api_key = st.sidebar.text_input("Google API Key (Optional)", type="password", help="Required for Gemini. Leave empty to use free Llama.")
-    if api_key:
-        os.environ["GOOGLE_API_KEY"] = api_key
+    # AI Provider Selection
+    ai_provider = st.sidebar.selectbox("AI Provider", ["Google Gemini", "Groq (Llama 3)"])
+    
+    # Dynamic API Key Input
+    if ai_provider == "Google Gemini":
+        api_key = st.sidebar.text_input("Google API Key", type="password", help="Get it from aistudio.google.com")
+        if api_key:
+            os.environ["GOOGLE_API_KEY"] = api_key
+    else:
+        api_key = st.sidebar.text_input("Groq API Key", type="password", help="Get it from console.groq.com")
+        if api_key:
+            os.environ["GROQ_API_KEY"] = api_key
 
     # Analyze Button
     if st.sidebar.button("Analyze Games"):
@@ -238,18 +247,26 @@ if app_mode == "🏠 Home / Analyzer":
         with tab4:
             st.subheader("🤖 Personalized Coaching Report")
             
-            # Check for Google API Key
-            if os.getenv("GOOGLE_API_KEY"):
+            # Check for API Key based on provider
+            if ai_provider == "Google Gemini" and os.getenv("GOOGLE_API_KEY"):
                 with st.spinner("Generating insights with Gemini..."):
                     llm = LLMClient()
                     report = llm.generate_coaching_report(player_stats, opening_stats)
                     st.markdown(report)
-            else:
-                st.info("ℹ️ Using Free Llama 3.1 Coach (No Google API Key detected)")
-                with st.spinner("Generating insights with Llama 3.1..."):
-                    llm = PuterClient()
+            elif ai_provider == "Groq (Llama 3)" and os.getenv("GROQ_API_KEY"):
+                with st.spinner("Generating insights with Groq (Llama 3)..."):
+                    llm = GroqClient()
                     report = llm.generate_coaching_report(player_stats, opening_stats)
                     st.markdown(report)
+            else:
+                st.warning(f"⚠️ Please enter your {ai_provider} API Key in the sidebar.")
+                # Fallback to Puter if nothing else works (optional, but good for safety)
+                if not os.getenv("GOOGLE_API_KEY") and not os.getenv("GROQ_API_KEY"):
+                     st.info("ℹ️ Using Free Llama 3.1 Coach (Fallback)")
+                     with st.spinner("Generating insights with Llama 3.1..."):
+                        llm = PuterClient()
+                        report = llm.generate_coaching_report(player_stats, opening_stats)
+                        st.markdown(report)
     else:
         # Initial State Message
         st.info("👈 Enter a username and click 'Analyze Games' to start.")
@@ -301,11 +318,15 @@ with st.sidebar:
                     # Get Context
                     context = st.session_state.get('chat_context')
                     
-                    # Logic: Use Gemini if Key exists, else Puter
-                    if os.getenv("GOOGLE_API_KEY"):
+                    # Logic: Use Selected Provider
+                    if ai_provider == "Google Gemini" and os.getenv("GOOGLE_API_KEY"):
                         client = LLMClient()
                         response = client.chat(st.session_state.messages, context=context)
+                    elif ai_provider == "Groq (Llama 3)" and os.getenv("GROQ_API_KEY"):
+                        client = GroqClient()
+                        response = client.chat(st.session_state.messages, context=context)
                     else:
+                        # Fallback
                         client = PuterClient()
                         response = client.chat(st.session_state.messages, context=context)
                     
