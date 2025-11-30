@@ -238,50 +238,94 @@ def calculate_pacing_metrics(df, time_control):
     avg_ply = df['ply_count'].mean()
     avg_moves = int(avg_ply / 2)
     
+    # Calculate Win Rate for Context
+    wins = len(df[df['result'] == 'Win'])
+    total = len(df)
+    win_rate = wins / total if total > 0 else 0
+    
     tc = time_control.lower()
     
-    # Thresholds (Lower Bound, Upper Bound)
-    # Below Lower = Too Fast
-    # Above Upper = Too Slow
-    thresholds = {
-        'bullet': (15, 45),
-        'blitz': (20, 50),
-        'rapid': (25, 60),
-        'classical': (30, 70),
-        'overall': (20, 60) # Generic fallback
+    # Target Moves for "Average" Pacing (Score 5.5)
+    targets = {
+        'bullet': 30,
+        'blitz': 35,
+        'rapid': 40,
+        'classical': 45,
+        'overall': 35
     }
+    target = targets.get(tc, 35)
     
-    lower, upper = thresholds.get(tc, (20, 60))
+    # Calculate Pacing Score (1-10)
+    # 1 = Extremely Fast, 10 = Extremely Slow
+    # Scale: +/- 15 moves from target covers the full range
+    diff = avg_moves - target
+    # Map diff to score: -15 -> 1, +15 -> 10
+    raw_score = 5.5 + (diff / 3.5)
+    pacing_score = int(max(1, min(10, round(raw_score))))
     
-    if avg_moves < lower:
-        if win_rate > 0.60:
-            label = "Blitzkrieg ⚡"
-            color = "#00C853" # Green
-            feedback = f"Short games ({avg_moves} moves), but you're winning {win_rate:.0%} of them! You crush opponents quickly."
-            improvement = "Your aggression is working. Work on 'prophylaxis' to prevent counterplay when you can't win immediately."
+    # Define 10 Archetypes based on Score and Win Rate
+    # High Win Rate threshold
+    high_wr = 0.55
+    
+    if pacing_score <= 2: # Extremely Fast
+        if win_rate > high_wr:
+            label = "Intuitive Genius ⚡"
+            color = "#00E676" # Bright Green
+            feedback = f"Avg {avg_moves} moves. You play instantly and crush opponents. Your intuition is terrifying."
+            improvement = "You are a natural talent. Study complex tactical patterns to sharpen your greatest weapon."
         else:
-            label = "Too Fast 🐇"
-            color = "#FF4B4B" # Red
-            feedback = f"You average only {avg_moves} moves. You might be playing too recklessly or resigning early."
-            improvement = "Sit on your hands! Force yourself to calculate one extra variation before moving. Stop resigning early."
+            label = "Suicidal Sprinter 🧨"
+            color = "#D50000" # Deep Red
+            feedback = f"Avg {avg_moves} moves. You play way too fast and lose. You are essentially gambling."
+            improvement = "Stop! Sit on your hands. Force yourself to check for blunders before every single move."
             
-    elif avg_moves > upper:
-        if win_rate > 0.60:
-            label = "Marathon Master 🏃"
-            color = "#00C853" # Green
-            feedback = f"Long games ({avg_moves} moves), but you win {win_rate:.0%} of them! You excel in the endgame."
-            improvement = "Your stamina is great. Study sharper openings to potentially win games earlier and save energy."
+    elif pacing_score <= 4: # Fast
+        if win_rate > high_wr:
+            label = "Sharp Shooter 🔫"
+            color = "#66BB6A" # Light Green
+            feedback = f"Avg {avg_moves} moves. You play aggressively and it pays off. You put pressure on opponents."
+            improvement = "Maintain this energy. Ensure your opening repertoire supports this aggressive style."
         else:
-            label = "Too Slow 🐢"
-            color = "#1E88E5" # Blue
-            feedback = f"You average {avg_moves} moves. Your games are long grinds, but you aren't converting enough of them."
-            improvement = "Work on 'conversion' techniques. When you have an advantage, look for the most forcing path to simplify and win."
+            label = "Impulsive Mover 🐇"
+            color = "#FF5252" # Red-Orange
+            feedback = f"Avg {avg_moves} moves. You move a bit too quickly in critical moments, missing chances."
+            improvement = "Slow down only when the position is complex. Learn to recognize 'critical moments'."
             
-    else:
-        label = "Just Right 🎯"
-        color = "#00C853" # Green
-        feedback = f"Your average game length ({avg_moves} moves) is typical for {tc} chess. Good pacing!"
-        improvement = "Your pacing is solid. Focus on analyzing your 'critical moments'—where the game could have gone either way."
+    elif pacing_score <= 6: # Average
+        if win_rate > high_wr:
+            label = "Balanced Pacer ⚖️"
+            color = "#29B6F6" # Light Blue
+            feedback = f"Avg {avg_moves} moves. Your pacing is perfect. You manage your time well."
+            improvement = "You have a solid foundation. Focus on deep strategic understanding to improve further."
+        else:
+            label = "Drifting Aimlessly 🍂"
+            color = "#FFA726" # Orange
+            feedback = f"Avg {avg_moves} moves. Your pace is normal, but you aren't winning enough. You might be lacking a plan."
+            improvement = "Work on 'planning'. Don't just make moves; have a clear goal for every stage of the game."
+            
+    elif pacing_score <= 8: # Slow
+        if win_rate > high_wr:
+            label = "Deep Thinker 🧠"
+            color = "#42A5F5" # Blue
+            feedback = f"Avg {avg_moves} moves. You take your time and find good moves. Your calculation is an asset."
+            improvement = "Keep calculating, but practice 'pattern recognition' to speed up simple decisions."
+        else:
+            label = "Time Trouble Addict ⏳"
+            color = "#FF7043" # Orange-Red
+            feedback = f"Avg {avg_moves} moves. You think too long and likely blunder in time pressure."
+            improvement = "Trust your gut on simple moves. Save your time for the complicated positions."
+            
+    else: # Extremely Slow (9-10)
+        if win_rate > high_wr:
+            label = "Grind Master 🐢"
+            color = "#1E88E5" # Dark Blue
+            feedback = f"Avg {avg_moves} moves. You torture opponents in long endgames. You have immense patience."
+            improvement = "Your endgame technique is key. Study 'endgame studies' to perfect your grinding skills."
+        else:
+            label = "Paralysis by Analysis 🧊"
+            color = "#B71C1C" # Dark Red
+            feedback = f"Avg {avg_moves} moves. You freeze up and overthink everything. You are your own worst enemy."
+            improvement = "Set a strict time limit per move in your head. A 'good' move now is better than a 'perfect' move when your flag falls."
 
     return {
         'label': label,
