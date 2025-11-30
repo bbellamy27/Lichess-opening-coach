@@ -92,6 +92,7 @@ def plot_win_rate_by_opening(opening_stats, min_games=5):
                  
     fig.update_layout(
         yaxis={'categoryorder':'total ascending'},
+        xaxis_tickformat = '.0%',
         plot_bgcolor=COLORS['Background'],
         paper_bgcolor=COLORS['Background'],
         font_color=COLORS['Text']
