@@ -281,7 +281,7 @@ import chess
 import chess.pgn
 import io
 
-def calculate_time_stats(games, username):
+def calculate_time_stats(games, username, time_control="overall"):
     """
     Calculate average time spent per move in Opening, Middlegame, and Endgame.
     
@@ -293,12 +293,13 @@ def calculate_time_stats(games, username):
     Args:
         games (list): List of raw game dictionaries (must include 'clocks').
         username (str): User to analyze.
+        time_control (str): 'rapid', 'blitz', 'bullet', 'classical', or 'overall'.
         
     Returns:
         dict: {
-            'opening_avg': float (seconds),
-            'middlegame_avg': float,
-            'endgame_avg': float
+            'opening_avg': float, 'opening_feedback': str,
+            'middlegame_avg': float, 'middlegame_feedback': str,
+            'endgame_avg': float, 'endgame_feedback': str
         }
     """
     opening_times = []
@@ -332,79 +333,27 @@ def calculate_time_stats(games, username):
         board = chess.Board()
         moves = moves_str.split()
         
-        # Clocks list structure: [white_initial, black_initial, white_move1, black_move1, ...]
-        # We need to extract the times for the user's moves.
-        # User's clock times are at indices: user_index, user_index + 2, user_index + 4...
-        # Wait, Lichess clocks are: [initial_white, initial_black, after_white_1, after_black_1, ...]
-        # Actually, let's verify Lichess clock format.
-        # It's usually: [curr_white, curr_black, curr_white, curr_black...]
-        # Time spent on move N = Clock_before - Clock_after + Increment
-        
-        # Let's align moves with clocks.
-        # clocks[0] = White initial
-        # clocks[1] = Black initial
-        # clocks[2] = White after move 1
-        # clocks[3] = Black after move 1
-        
-        # User moves are at ply 0, 2, 4... if White
-        # User moves are at ply 1, 3, 5... if Black
-        
         for i, move_san in enumerate(moves):
-            # Update board
             try:
                 board.push_san(move_san)
             except ValueError:
                 break
                 
-            # Check if this was user's move
-            # Turn has already flipped after push, so if it's now NOT user's turn, then user just moved.
-            # Or simpler: if i % 2 == 0 (White moved) and user is White.
             is_user_move = (i % 2 == 0) if user_color == chess.WHITE else (i % 2 != 0)
             
             if is_user_move:
-                # Calculate time spent
-                # Clock index for AFTER this move is i + 2 (since 0,1 are initials)
                 if i + 2 >= len(clocks):
                     break
                     
-                # Time before move: clocks[i] (user's clock from previous turn)
-                # Time after move: clocks[i+2]
-                # Wait, indices are tricky.
-                # clocks = [W_init, B_init, W_1, B_1, W_2, B_2...]
-                # If White moves (i=0): Time spent = W_init - W_1 + inc
-                # W_init is clocks[0]. W_1 is clocks[2].
-                # If Black moves (i=1): Time spent = B_init - B_1 + inc
-                # B_init is clocks[1]. B_1 is clocks[3].
-                
-                # General formula:
-                # idx_before = i
-                # idx_after = i + 2
-                # time_spent = (clocks[idx_before] - clocks[idx_after]) / 100 + increment
-                
                 time_spent = (clocks[i] - clocks[i+2]) / 100 + increment
-                time_spent = max(0, time_spent) # Clamp negative times (lag compensation)
+                time_spent = max(0, time_spent)
                 
                 move_num = (i // 2) + 1
                 
-                # Categorize Phase
                 if move_num <= 10:
                     opening_times.append(time_spent)
                 else:
-                    # Check for Queens
-                    # We check the board state BEFORE the move? Or currently?
-                    # "Middlegame ending when most power pieces traded off like the queens"
-                    # If Queens are gone NOW, it's Endgame.
-                    # Note: board is already updated with the move.
-                    
-                    has_queens = bool(board.pieces(chess.QUEEN, chess.WHITE)) or bool(board.pieces(chess.QUEEN, chess.BLACK))
-                    # User definition: "endgame after pieces traded". Usually means BOTH queens gone? Or just one?
-                    # Standard def: Queens off = Endgame (often). Let's assume BOTH queens must be off? 
-                    # Or if "most power pieces traded".
-                    # Let's stick to: If NO Queens on board -> Endgame.
-                    # If ANY Queen on board -> Middlegame.
-                    
                     queens_on_board = len(board.pieces(chess.QUEEN, chess.WHITE)) + len(board.pieces(chess.QUEEN, chess.BLACK))
-                    
                     if queens_on_board > 0:
                         middlegame_times.append(time_spent)
                     else:
@@ -413,8 +362,39 @@ def calculate_time_stats(games, username):
     def safe_avg(lst):
         return round(sum(lst) / len(lst), 1) if lst else 0
 
+    op_avg = safe_avg(opening_times)
+    mid_avg = safe_avg(middlegame_times)
+    end_avg = safe_avg(endgame_times)
+    
+    # --- Generate Feedback ---
+    tc = time_control.lower()
+    
+    # Thresholds: (Min Ideal, Max Ideal)
+    # Below Min = Too Fast, Above Max = Too Slow
+    thresholds = {
+        'bullet': {'op': (0.5, 2.0), 'mid': (0.8, 3.0), 'end': (0.8, 3.0)},
+        'blitz':  {'op': (2.0, 6.0), 'mid': (3.0, 10.0), 'end': (3.0, 10.0)},
+        'rapid':  {'op': (4.0, 15.0), 'mid': (8.0, 25.0), 'end': (8.0, 25.0)},
+        'classical': {'op': (10.0, 40.0), 'mid': (30.0, 120.0), 'end': (20.0, 90.0)},
+        'overall': {'op': (3.0, 10.0), 'mid': (5.0, 20.0), 'end': (5.0, 20.0)}
+    }
+    
+    t = thresholds.get(tc, thresholds['overall'])
+    
+    def get_feedback(val, limits, phase):
+        low, high = limits
+        if val < low:
+            return f"Too fast! You're rushing the {phase}. Take a moment to think."
+        elif val > high:
+            return f"Too slow. You're spending too much time in the {phase}. Watch the clock!"
+        else:
+            return f"Good pacing. Your time spent in the {phase} is ideal for {tc}."
+
     return {
-        'opening_avg': safe_avg(opening_times),
-        'middlegame_avg': safe_avg(middlegame_times),
-        'endgame_avg': safe_avg(endgame_times)
+        'opening_avg': op_avg,
+        'opening_feedback': get_feedback(op_avg, t['op'], "opening"),
+        'middlegame_avg': mid_avg,
+        'middlegame_feedback': get_feedback(mid_avg, t['mid'], "middlegame"),
+        'endgame_avg': end_avg,
+        'endgame_feedback': get_feedback(end_avg, t['end'], "endgame")
     }
