@@ -5,6 +5,7 @@ from data_processing import process_games, get_opening_stats
 from eda import plot_win_rate_by_color, plot_rating_trend, plot_top_openings, plot_win_rate_by_opening, plot_time_heatmap, plot_opponent_scatter, plot_termination_pie, plot_correlation_heatmap
 from llm_client import LLMClient
 from engine_client import EngineClient
+from puter_client import PuterClient
 import os
 from dotenv import load_dotenv
 
@@ -207,12 +208,18 @@ if analyze_btn:
         # Tab 4: AI Coach (Gemini Integration)
         with tab4:
             st.subheader("🤖 Personalized Coaching Report")
-            if not os.getenv("GOOGLE_API_KEY"):
-                st.warning("⚠️ Please enter a Google API Key in the sidebar to generate the AI report.")
-                st.info("You can get a free key from [Google AI Studio](https://aistudio.google.com/app/apikey).")
-            else:
+            
+            # Check for Google API Key
+            if os.getenv("GOOGLE_API_KEY"):
                 with st.spinner("Generating insights with Gemini..."):
                     llm = LLMClient()
+                    report = llm.generate_coaching_report(player_stats, opening_stats)
+                    st.markdown(report)
+            else:
+                # Fallback to Puter (Llama 3.1)
+                st.info("ℹ️ Using Free Llama 3.1 Coach (No Google API Key detected)")
+                with st.spinner("Generating insights with Llama 3.1..."):
+                    llm = PuterClient()
                     report = llm.generate_coaching_report(player_stats, opening_stats)
                     st.markdown(report)
                     
