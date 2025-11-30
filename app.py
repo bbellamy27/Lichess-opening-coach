@@ -4,6 +4,7 @@ from api_client import LichessClient
 from data_processing import process_games, get_opening_stats
 from eda import plot_win_rate_by_color, plot_rating_trend, plot_top_openings, plot_win_rate_by_opening, plot_time_heatmap, plot_opponent_scatter, plot_termination_pie, plot_correlation_heatmap
 from llm_client import LLMClient
+from engine_client import EngineClient
 import os
 from dotenv import load_dotenv
 
@@ -166,7 +167,7 @@ if analyze_btn:
         st.divider()
         
         # --- Tabs for Analysis Sections ---
-        tab1, tab2, tab3, tab4 = st.tabs(["📊 Data Overview", "📈 Basic EDA", "🧠 Advanced Insights", "🤖 AI Coach"])
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Data Overview", "📈 Basic EDA", "🧠 Advanced Insights", "🤖 AI Coach", "♟️ Engine"])
         
         # Tab 1: Raw Data Tables
         with tab1:
@@ -214,6 +215,19 @@ if analyze_btn:
                     llm = LLMClient()
                     report = llm.generate_coaching_report(player_stats, opening_stats)
                     st.markdown(report)
+                    
+        # Tab 5: Chess Engine
+        with tab5:
+            st.subheader("♟️ Best Move Calculator")
+            st.markdown("Enter a FEN position to get the best move from Stockfish.")
+            
+            fen_input = st.text_input("FEN String", value="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+            
+            if st.button("Calculate Best Move"):
+                with st.spinner("Thinking..."):
+                    engine = EngineClient()
+                    result = engine.get_best_move(fen_input)
+                    st.success(result)
 else:
     # Initial State Message
     st.info("👈 Enter a username and click 'Analyze Games' to start.")
