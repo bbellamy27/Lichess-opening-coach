@@ -13,7 +13,15 @@ from groq_client import GroqClient
 import os
 from dotenv import load_dotenv
 from ui import render_game_list, render_opening_stats
-from database import ChessDatabaseManager
+
+# MongoDB Integration
+try:
+    from DataBases.chess_database import ChessDatabaseManager
+    from DataBases.chess_parser import OptimizedPGNParser
+    from DataBases.chess_analytics import ChessAnalytics
+    MONGODB_AVAILABLE = True
+except ImportError:
+    MONGODB_AVAILABLE = False
 
 # Load environment variables (API keys) from .env file
 load_dotenv()
@@ -371,7 +379,7 @@ else:
         time_stats = None
 
         # --- Tabs for Analysis Sections ---
-        tab1, tab2, tab3, tab4 = st.tabs(["📊 Data Overview", "📈 Basic EDA", "🧠 Advanced Insights", "🤖 AI Coach"])
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Data Overview", "📈 Basic EDA", "🧠 Advanced Insights", "🤖 AI Coach", "🌍 Global Database"])
         
         # Tab 1: Raw Data Tables
         with tab1:
@@ -838,6 +846,85 @@ else:
                         st.markdown(report)
                 else:
                     st.warning(f"⚠️ Please enter your {ai_provider} API Key in the sidebar.")
+        
+        # Tab 5: Global Database (MongoDB)
+        with tab5:
+            st.subheader("🌍 Global Chess Database (MongoDB)")
+            
+            if not MONGODB_AVAILABLE:
+                st.error("❌ MongoDB modules not found. Please ensure `DataBases/` folder exists and `pymongo` is installed.")
+            else:
+                # 1. Connection Status
+                try:
+                    db_manager = ChessDatabaseManager()
+                    stats = db_manager.db.command("dbStats")
+                    st.success(f"✅ Connected to MongoDB (Size: {stats['dataSize'] / 1024 / 1024:.2f} MB)")
+                    
+                    # 2. Ingestion UI
+                    st.markdown("### 📥 Ingest PGN Data")
+                    uploaded_file = st.file_uploader("Upload PGN File", type=["pgn", "txt"])
+                    
+                    if uploaded_file:
+                        # Save to temp file
+                        with open("temp_import.pgn", "wb") as f:
+                            f.write(uploaded_file.getbuffer())
+                        
+                        if st.button("Start Import"):
+                            parser = OptimizedPGNParser(db_manager)
+                            with st.spinner("Importing games..."):
+                                parser.ingest_pgn_file("temp_import.pgn")
+                            st.success("Import Complete!")
+                            os.remove("temp_import.pgn")
+                            st.rerun()
+                    
+                    st.divider()
+                    
+                    # 3. Analytics Dashboard
+                    st.markdown("### 📊 Database Analytics")
+                    analytics = ChessAnalytics(db_manager)
+                    
+                    # A. Overview Metrics
+                    db_stats = analytics.get_database_stats()
+                    c1, c2, c3, c4 = st.columns(4)
+                    c1.metric("Total Games", db_stats['games'])
+                    c2.metric("Players", db_stats['players'])
+                    c3.metric("Openings", db_stats['openings'])
+                    c4.metric("Rating History", db_stats['rating_history'])
+                    
+                    # B. Rating Volatility (Query 1)
+                    st.markdown("#### 1. Rating Volatility Analysis")
+                    volatility_data = analytics.get_rating_volatility()
+                    if volatility_data:
+                        v_df = pd.DataFrame(volatility_data)
+                        fig_vol = go.Figure(data=[
+                            go.Scatter(x=v_df['avg_rating'], y=v_df['volatility_ratio'], mode='markers', text=v_df['username'], name='Players')
+                        ])
+                        fig_vol.update_layout(title="Rating Volatility vs Average Rating", xaxis_title="Average Rating", yaxis_title="Volatility Ratio")
+                        st.plotly_chart(fig_vol, use_container_width=True)
+                    
+                    # C. Time Control Performance (Query 2)
+                    st.markdown("#### 2. Performance by Time Control")
+                    tc_data = analytics.get_performance_by_time_control()
+                    if tc_data:
+                        tc_df = pd.DataFrame(tc_data)
+                        fig_tc = go.Figure(data=[
+                            go.Bar(name='White Win %', x=tc_df['time_control'], y=tc_df['white_win_rate']),
+                            go.Bar(name='Black Win %', x=tc_df['time_control'], y=tc_df['black_win_rate']),
+                            go.Bar(name='Draw %', x=tc_df['time_control'], y=tc_df['draw_rate'])
+                        ])
+                        fig_tc.update_layout(barmode='stack', title="Win Rates by Time Control")
+                        st.plotly_chart(fig_tc, use_container_width=True)
+                    
+                    # D. Opening Success (Query 3)
+                    st.markdown("#### 3. Top Openings by Success Rate")
+                    opening_data = analytics.get_opening_success_rates(min_games=50)
+                    if opening_data:
+                        op_df = pd.DataFrame(opening_data)
+                        st.dataframe(op_df[['eco_code', 'opening_name', 'total_games', 'white_advantage', 'avg_rating']], use_container_width=True)
+
+                except Exception as e:
+                    st.error(f"❌ Connection Error: {e}")
+                    st.info("Make sure MongoDB is running locally on port 27017.")
     else:
         # Initial State Message
         st.info("👈 Enter a username and click 'Analyze Games' to start.")
