@@ -7,3 +7,4 @@ python-dotenv
 ndjson
 chess
 stockfish
+pymongo

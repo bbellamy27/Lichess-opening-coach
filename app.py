@@ -13,6 +13,7 @@ from groq_client import GroqClient
 import os
 from dotenv import load_dotenv
 from ui import render_game_list, render_opening_stats
+from database import ChessDatabaseManager
 
 # Load environment variables (API keys) from .env file
 load_dotenv()
@@ -123,6 +124,11 @@ st.sidebar.header("Settings")
 username = st.sidebar.text_input("Lichess Username", value="DrNykterstein")
 num_games = st.sidebar.slider("Number of Games", min_value=10, max_value=500, value=100)
 
+# Database Connection
+db = ChessDatabaseManager()
+db_stats = db.get_stats()
+st.sidebar.caption(f"🗄️ DB Status: {db_stats['status']} ({db_stats['games']} games)")
+
 # AI Provider Selection
 ai_provider = st.sidebar.selectbox("AI Provider", ["Free Llama (Default)", "Google Gemini", "Groq (Llama 3)"])
 
@@ -139,83 +145,127 @@ else:
     st.sidebar.info("Using free Llama 3.1 via Puter. No key required!")
 
     # Analyze Button
-    if st.sidebar.button("Analyze Games"):
-        with st.spinner(f"Fetching games for {username}..."):
-            client = LichessClient() # Assuming LichessClient doesn't need username in constructor
-            games = client.get_user_games(username, max_games=num_games)
-            
-            if games:
-                df = process_games(games, username)
-                opening_stats = get_opening_stats(df)
+    col_fetch, col_load = st.sidebar.columns(2)
+    
+    with col_fetch:
+        if st.button("Fetch from Lichess"):
+            with st.spinner(f"Fetching games for {username}..."):
+                client = LichessClient()
+                games = client.get_user_games(username, max_games=num_games)
                 
-                # Calculate Player Metrics
-                total_games = len(df)
-                win_count = len(df[df['result'] == 'Win'])
-                loss_count = len(df[df['result'] == 'Loss'])
-                draw_count = len(df[df['result'] == 'Draw'])
-                win_rate = win_count / total_games if total_games > 0 else 0
-                current_rating = df.iloc[0]['user_rating'] if not df.empty else 'N/A'
+                if games:
+                    df = process_games(games, username)
+                    
+                    # Save to DB automatically
+                    if db.connected:
+                        saved_count = db.save_games(df)
+                        st.toast(f"Saved {saved_count} games to DB!", icon="💾")
+                    
+                    opening_stats = get_opening_stats(df)
+                    
+                    # Calculate Player Metrics
+                    total_games = len(df)
+                    win_count = len(df[df['result'] == 'Win'])
+                    loss_count = len(df[df['result'] == 'Loss'])
+                    draw_count = len(df[df['result'] == 'Draw'])
+                    win_rate = win_count / total_games if total_games > 0 else 0
+                    current_rating = df.iloc[0]['user_rating'] if not df.empty else 'N/A'
 
-                player_stats = {
-                    'username': username,
-                    'total_games': total_games,
-                    'current_rating': current_rating,
-                    'win_rate': win_rate
-                }
-                
-                # Store data in session state
-                st.session_state['game_data'] = df
-                st.session_state['opening_stats'] = opening_stats
-                st.session_state['player_stats'] = player_stats
-                st.session_state['raw_games'] = games
-                
-                # --- Generate Context for Chatbot ---
-                # --- Generate Context for Chatbot ---
-                # Split data by color
-                df_white = df[df['user_color'] == 'white']
-                df_black = df[df['user_color'] == 'black']
-                
-                stats_white = get_opening_stats(df_white)
-                stats_black = get_opening_stats(df_black)
-                
-                # Helper to format opening stats
-                def format_openings(stats, label):
-                    details = []
-                    if not stats.empty:
-                        for index, row in stats.head(3).iterrows():
-                            details.append(f"- {row['opening_name']}: {row['games']} games ({row['wins']}W-{row['losses']}L-{row['draws']}D), Win Rate: {row['win_rate']:.1%}")
-                    return "\n".join(details) if details else f"No {label} games played."
+                    player_stats = {
+                        'username': username,
+                        'total_games': total_games,
+                        'current_rating': current_rating,
+                        'win_rate': win_rate
+                    }
+                    
+                    # Store data in session state
+                    st.session_state['game_data'] = df
+                    st.session_state['opening_stats'] = opening_stats
+                    st.session_state['player_stats'] = player_stats
+                    st.session_state['raw_games'] = games
+                    
+                    # --- Generate Context for Chatbot ---
+                    # Split data by color
+                    df_white = df[df['user_color'] == 'white']
+                    df_black = df[df['user_color'] == 'black']
+                    
+                    stats_white = get_opening_stats(df_white)
+                    stats_black = get_opening_stats(df_black)
+                    
+                    # Helper to format opening stats
+                    def format_openings(stats, label):
+                        details = []
+                        if not stats.empty:
+                            for index, row in stats.head(3).iterrows():
+                                details.append(f"- {row['opening_name']}: {row['games']} games ({row['wins']}W-{row['losses']}L-{row['draws']}D), Win Rate: {row['win_rate']:.1%}")
+                        return "\n".join(details) if details else f"No {label} games played."
 
-                white_str = format_openings(stats_white, "White")
-                black_str = format_openings(stats_black, "Black")
-                
-                # Split data by Time Control
-                time_controls = ['rapid', 'blitz', 'classical']
-                tc_context = ""
-                
-                for tc in time_controls:
-                    df_tc = df[df['speed'] == tc]
-                    if not df_tc.empty:
-                        tc_games = len(df_tc)
-                        tc_wins = len(df_tc[df_tc['result'] == 'Win'])
-                        tc_rate = tc_wins / tc_games if tc_games > 0 else 0
-                        tc_rating = df_tc.iloc[0]['user_rating']
-                        tc_context += f"\n{tc.capitalize()} Stats:\nRating: {tc_rating}, Win Rate: {tc_rate:.1%} ({tc_games} games)\n"
-                
-                context_str = (
-                    f"User: {username}\n"
-                    f"Overall Rating: {current_rating}\n"
-                    f"Overall Win Rate: {win_rate:.1%}\n"
-                    f"Total Games: {total_games}\n"
-                    f"{tc_context}\n"
-                    f"TOP OPENINGS AS WHITE:\n{white_str}\n\n"
-                    f"TOP OPENINGS AS BLACK:\n{black_str}"
-                )
-                st.session_state['chat_context'] = context_str
-                
-                st.success(f"Successfully loaded {len(df)} games!")
+                    white_str = format_openings(stats_white, "White")
+                    black_str = format_openings(stats_black, "Black")
+                    
+                    # Split data by Time Control
+                    time_controls = ['rapid', 'blitz', 'classical']
+                    tc_context = ""
+                    
+                    for tc in time_controls:
+                        df_tc = df[df['speed'] == tc]
+                        if not df_tc.empty:
+                            tc_games = len(df_tc)
+                            tc_wins = len(df_tc[df_tc['result'] == 'Win'])
+                            tc_rate = tc_wins / tc_games if tc_games > 0 else 0
+                            tc_rating = df_tc.iloc[0]['user_rating']
+                            tc_context += f"\n{tc.capitalize()} Stats:\nRating: {tc_rating}, Win Rate: {tc_rate:.1%} ({tc_games} games)\n"
+                    
+                    context_str = (
+                        f"User: {username}\n"
+                        f"Overall Rating: {current_rating}\n"
+                        f"Overall Win Rate: {win_rate:.1%}\n"
+                        f"Total Games: {total_games}\n"
+                        f"{tc_context}\n"
+                        f"TOP OPENINGS AS WHITE:\n{white_str}\n\n"
+                        f"TOP OPENINGS AS BLACK:\n{black_str}"
+                    )
+                    st.session_state['chat_context'] = context_str
+                    
+                    st.success(f"Loaded {len(df)} games from Lichess!")
+                else:
+                    st.error("No games found or API error.")
+
+    with col_load:
+        if st.button("Load from DB"):
+            if db.connected:
+                with st.spinner(f"Loading games for {username} from DB..."):
+                    df = db.load_games(username, limit=num_games)
+                    if not df.empty:
+                        # Re-process / Re-calculate stats
+                        # Note: df is already processed, but we need to regenerate stats
+                        opening_stats = get_opening_stats(df)
+                        
+                        # Calculate Player Metrics
+                        total_games = len(df)
+                        win_count = len(df[df['result'] == 'Win'])
+                        loss_count = len(df[df['result'] == 'Loss'])
+                        draw_count = len(df[df['result'] == 'Draw'])
+                        win_rate = win_count / total_games if total_games > 0 else 0
+                        current_rating = df.iloc[0]['user_rating'] if not df.empty else 'N/A'
+
+                        player_stats = {
+                            'username': username,
+                            'total_games': total_games,
+                            'current_rating': current_rating,
+                            'win_rate': win_rate
+                        }
+                        
+                        st.session_state['game_data'] = df
+                        st.session_state['opening_stats'] = opening_stats
+                        st.session_state['player_stats'] = player_stats
+                        st.session_state['raw_games'] = df.to_dict('records') # Approximation
+                        
+                        st.success(f"Loaded {len(df)} games from DB!")
+                    else:
+                        st.warning("No games found in DB for this user.")
             else:
-                st.error("No games found or API error.")
+                st.error("Database not connected.")
 
     # Calculate Accuracy Button (Single/Multi Select)
     # This is now handled in the main view for better UX
