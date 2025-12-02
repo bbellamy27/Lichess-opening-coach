@@ -11,11 +11,19 @@ class PuterClient:
         self.url = "https://text.pollinations.ai/"
         self.model = "openai" # Uses their default best available model
 
-    def generate_coaching_report(self, player_stats, opening_stats, risk_data=None, pacing_data=None, time_stats=None, analysis_stats=None):
+    def generate_coaching_report(self, player_stats, opening_stats, risk_data=None, pacing_data=None, time_stats=None, analysis_stats=None, opening_stats_white=None, opening_stats_black=None):
         """
         Generate a personalized coaching report using Free AI.
         """
         top_openings = opening_stats.head(5).to_string(index=False)
+        
+        white_repertoire = "No data"
+        if opening_stats_white is not None and not opening_stats_white.empty:
+            white_repertoire = opening_stats_white.head(5).to_string(index=False)
+            
+        black_repertoire = "No data"
+        if opening_stats_black is not None and not opening_stats_black.empty:
+            black_repertoire = opening_stats_black.head(5).to_string(index=False)
         
         risk_info = f"- Style: {risk_data.get('label', 'N/A')} (Score: {risk_data.get('score', 0)}/10)" if risk_data else ""
         pacing_info = f"- Pacing Archetype: {pacing_data.get('label', 'N/A')} (Avg {pacing_data.get('avg_moves', 0)} moves)" if pacing_data else ""
@@ -65,8 +73,15 @@ class PuterClient:
         **Accuracy & Phase Analysis:**
         {analysis_info}
         
-        **Opening Repertoire:**
-        {top_openings}
+        **Opening Repertoire (CRITICAL: Distinguish between White and Black):**
+        
+        **As White, they play:**
+        {white_repertoire}
+        
+        **As Black, they play:**
+        {black_repertoire}
+        
+        **NOTE:** When analyzing their Black openings, be careful. If the opening name is "Sicilian Defense: Bowdler Attack", they played the **Sicilian Defense**. The "Bowdler Attack" is White's response. Do NOT tell them they played the Bowdler Attack. Tell them they *faced* it.
         
         **Task:**
         Provide a personalized coaching report. Do NOT be generic. Use the data above to diagnose their specific bottlenecks.

@@ -805,21 +805,25 @@ else:
                         filtered_games_ai = raw_games
                     analysis_stats = calculate_analysis_metrics(filtered_games_ai, username, pacing_label=pacing_data['label'])
 
+                # Calculate Opening Stats by Color for AI Context
+                opening_stats_white = get_opening_stats(df, color="white")
+                opening_stats_black = get_opening_stats(df, color="black")
+
                 # Check for API Key based on provider
                 if ai_provider == "Google Gemini" and os.getenv("GOOGLE_API_KEY"):
                     with st.spinner("Generating insights with Gemini..."):
                         llm = LLMClient()
-                        report = llm.generate_coaching_report(player_stats, opening_stats, risk_data, pacing_data, time_stats, analysis_stats)
+                        report = llm.generate_coaching_report(player_stats, opening_stats, risk_data, pacing_data, time_stats, analysis_stats, opening_stats_white, opening_stats_black)
                         st.markdown(report)
                 elif ai_provider == "Groq (Llama 3)" and os.getenv("GROQ_API_KEY"):
                     with st.spinner("Generating insights with Groq (Llama 3)..."):
                         llm = GroqClient()
-                        report = llm.generate_coaching_report(player_stats, opening_stats, risk_data, pacing_data, time_stats, analysis_stats)
+                        report = llm.generate_coaching_report(player_stats, opening_stats, risk_data, pacing_data, time_stats, analysis_stats, opening_stats_white, opening_stats_black)
                         st.markdown(report)
                 elif ai_provider == "Free Llama (Default)":
                      with st.spinner("Generating insights with Free Llama..."):
                         llm = PuterClient()
-                        report = llm.generate_coaching_report(player_stats, opening_stats, risk_data, pacing_data, time_stats, analysis_stats)
+                        report = llm.generate_coaching_report(player_stats, opening_stats, risk_data, pacing_data, time_stats, analysis_stats, opening_stats_white, opening_stats_black)
                         st.markdown(report)
                 else:
                     st.warning(f"⚠️ Please enter your {ai_provider} API Key in the sidebar.")

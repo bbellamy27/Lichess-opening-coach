@@ -122,12 +122,13 @@ def process_games(games, username):
     df = pd.DataFrame(processed_data)
     return df
 
-def get_opening_stats(df):
+def get_opening_stats(df, color=None):
     """
     Calculate aggregate statistics for each opening played.
     
     Args:
         df (pd.DataFrame): The processed games DataFrame.
+        color (str, optional): 'white' or 'black' to filter by user color.
         
     Returns:
         pd.DataFrame: DataFrame with columns [opening_name, games, wins, draws, losses, avg_rating, win_rate]
@@ -135,6 +136,13 @@ def get_opening_stats(df):
     if df.empty:
         return pd.DataFrame()
         
+    # Filter by color if specified
+    if color:
+        df = df[df['user_color'] == color]
+        
+    if df.empty:
+        return pd.DataFrame()
+
     # Group by opening name and aggregate results
     stats = df.groupby('opening_name').agg(
         games=('game_id', 'count'),

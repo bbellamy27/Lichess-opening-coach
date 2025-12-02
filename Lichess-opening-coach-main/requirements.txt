@@ -1,0 +1,10 @@
+streamlit
+pandas
+requests
+plotly
+google-generativeai
+python-dotenv
+ndjson
+chess
+stockfish
+pymongo
