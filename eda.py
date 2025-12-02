@@ -232,3 +232,89 @@ def plot_correlation_heatmap(df):
         font_color=COLORS['Text']
     )
     return fig
+
+def plot_radar_chart(data):
+    """
+    Generate a radar chart for player personality metrics.
+    data: dict with 'categories' (list) and 'values' (list)
+    """
+    if not data:
+        return None
+        
+    fig = go.Figure()
+    
+    fig.add_trace(go.Scatterpolar(
+        r=data['values'],
+        theta=data['categories'],
+        fill='toself',
+        name='Player Stats',
+        line_color=COLORS['Win']
+    ))
+    
+    fig.update_layout(
+        polar=dict(
+            radialaxis=dict(
+                visible=True,
+                range=[0, 10],
+                tickfont=dict(color='gray'),
+                gridcolor='#444'
+            ),
+            bgcolor=COLORS['Background']
+        ),
+        plot_bgcolor=COLORS['Background'],
+        paper_bgcolor=COLORS['Background'],
+        font_color=COLORS['Text'],
+        showlegend=False,
+        title="Player Personality Radar"
+    )
+    return fig
+
+def plot_move_time_distribution(raw_times):
+    """
+    Generate a histogram of move times.
+    """
+    if not raw_times:
+        return None
+        
+    fig = px.histogram(x=raw_times, nbins=50, 
+                       title="Move Time Distribution",
+                       labels={'x': 'Seconds per Move', 'y': 'Count'})
+                       
+    fig.update_traces(marker_color=COLORS['Draw'])
+    fig.update_layout(
+        plot_bgcolor=COLORS['Background'],
+        paper_bgcolor=COLORS['Background'],
+        font_color=COLORS['Text'],
+        xaxis_title="Time (seconds)",
+        yaxis_title="Number of Moves",
+        xaxis=dict(range=[0, 60]) # Focus on first minute
+    )
+    return fig
+
+def plot_opening_sunburst(df):
+    """
+    Generate a sunburst chart of openings (ECO codes -> Names).
+    """
+    if df.empty:
+        return None
+        
+    # Group by ECO and Name
+    # We use a simple hierarchy: Color -> Opening Name
+    
+    # Prepare data
+    df_sun = df.groupby(['user_color', 'opening_name']).size().reset_index(name='count')
+    
+    # Filter for readability (remove rare openings)
+    df_sun = df_sun[df_sun['count'] > 2]
+    
+    fig = px.sunburst(df_sun, path=['user_color', 'opening_name'], values='count',
+                      title="Opening Repertoire",
+                      color='user_color',
+                      color_discrete_map={'white': '#f0f0f0', 'black': '#404040'})
+                      
+    fig.update_layout(
+        plot_bgcolor=COLORS['Background'],
+        paper_bgcolor=COLORS['Background'],
+        font_color=COLORS['Text']
+    )
+    return fig

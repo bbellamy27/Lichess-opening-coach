@@ -109,7 +109,13 @@ def process_games(games, username):
             'eco': eco,
             'eco': eco,
             'opening_name': opening_name,
-            'ply_count': ply_count
+            'ply_count': ply_count,
+            'white_user': white_user,
+            'black_user': black_user,
+            'white_rating': white_rating,
+            'black_rating': black_rating,
+            'acpl': game.get('players', {}).get(user_color, {}).get('analysis', {}).get('acpl'),
+            'moves': moves
         })
         
     # Convert list of dicts to DataFrame

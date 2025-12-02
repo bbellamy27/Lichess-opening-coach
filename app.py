@@ -7,10 +7,12 @@ from data_processing import process_games, get_opening_stats, calculate_risk_met
 from eda import plot_win_rate_by_color, plot_rating_trend, plot_top_openings, plot_win_rate_by_opening, plot_time_heatmap, plot_opponent_scatter, plot_termination_pie, plot_correlation_heatmap, plot_radar_chart, plot_move_time_distribution, plot_opening_sunburst
 from llm_client import LLMClient
 from engine_client import EngineClient
+from local_engine import LocalEngine
 from puter_client import PuterClient
 from groq_client import GroqClient
 import os
 from dotenv import load_dotenv
+from ui import render_game_list, render_opening_stats
 
 # Load environment variables (API keys) from .env file
 load_dotenv()
@@ -215,6 +217,11 @@ else:
             else:
                 st.error("No games found or API error.")
 
+    # Calculate Accuracy Button (Single/Multi Select)
+    # This is now handled in the main view for better UX
+    # if st.sidebar.button("Calculate Accuracy (Stockfish)"):
+    #     ...
+
     # Display Data if Available
     if 'game_data' in st.session_state:
         df = st.session_state['game_data']
@@ -309,9 +316,73 @@ else:
         with tab1:
             st.subheader("Recent Games")
             # Prepare Game Data for Display
-            display_df = df[['date', 'variant', 'speed', 'user_color', 'result', 'opening_name', 'eco', 'termination']].head(100).copy()
-            display_df.columns = ['Date', 'Variant', 'Time Control', 'Color Played', 'Result', 'Opening Played', 'ECO', 'Termination']
-            st.dataframe(display_df, use_container_width=True)
+            # display_df = df[['date', 'variant', 'speed', 'user_color', 'result', 'opening_name', 'eco', 'termination']].head(100).copy()
+            # display_df.columns = ['Date', 'Variant', 'Time Control', 'Color Played', 'Result', 'Opening Played', 'ECO', 'Termination']
+            # st.dataframe(display_df, use_container_width=True)
+            # render_recent_games(df.head(50))
+            selected_game_ids = render_game_list(df.head(50))
+            
+            if selected_game_ids:
+                st.markdown("---")
+                if st.button(f"Analyze {len(selected_game_ids)} Selected Game(s)"):
+                    engine = LocalEngine()
+                    progress_bar = st.progress(0)
+                    
+                    for i, game_id in enumerate(selected_game_ids):
+                        # Find game in dataframe
+                        game_idx = df[df['game_id'] == game_id].index[0]
+                        row = df.loc[game_idx]
+                        
+                        moves_str = row.get('moves', '')
+                        if moves_str:
+                            moves_list = moves_str.split()
+                            try:
+                                # 1. Analyze
+                                acpl_data = engine.analyze_game(moves_list)
+                                
+                                # 2. Update Data
+                                if row['user_color'] == 'white':
+                                    my_acpl = int(acpl_data['white_acpl'])
+                                    df.at[game_idx, 'acpl'] = my_acpl
+                                else:
+                                    my_acpl = int(acpl_data['black_acpl'])
+                                    df.at[game_idx, 'acpl'] = my_acpl
+                                    
+                                # 3. Generate AI Report
+                                # Construct a prompt for the AI
+                                game_info = f"""
+                                Game: {row['white_user']} ({row['white_rating']}) vs {row['black_user']} ({row['black_rating']})
+                                Result: {row['result']}
+                                Opening: {row['opening_name']}
+                                Moves: {row['ply_count']}
+                                My Accuracy (ACPL): {my_acpl}
+                                """
+                                
+                                prompt = f"Analyze this chess game summary and give me a brief coaching tip based on the accuracy and opening:\n{game_info}"
+                                
+                                # Call AI
+                                ai_response = "AI Analysis unavailable (Check API Key)"
+                                if ai_provider == "Google Gemini" and os.getenv("GOOGLE_API_KEY"):
+                                    client = LLMClient()
+                                    ai_response = client.chat([{"role": "user", "content": prompt}])
+                                elif ai_provider == "Groq (Llama 3)" and os.getenv("GROQ_API_KEY"):
+                                    client = GroqClient()
+                                    ai_response = client.chat([{"role": "user", "content": prompt}])
+                                else:
+                                    client = PuterClient()
+                                    ai_response = client.chat([{"role": "user", "content": prompt}])
+                                    
+                                # Add to Chat
+                                st.session_state.messages.append({"role": "assistant", "content": f"**Game Analysis ({row['opening_name']}):**\n\n{ai_response}"})
+                                
+                            except Exception as e:
+                                st.error(f"Error analyzing game {game_id}: {e}")
+                        
+                        progress_bar.progress((i + 1) / len(selected_game_ids))
+                        
+                    st.session_state['game_data'] = df
+                    st.success("Analysis complete! Check the sidebar chat for the report.")
+                    st.rerun()
             
             st.subheader("Opening Statistics")
             if not opening_stats.empty:
@@ -321,8 +392,9 @@ else:
                 display_stats['win_rate'] = display_stats['win_rate'].apply(lambda x: f"{x:.1%}")
                 
                 # Rename columns
-                display_stats.columns = ['Opening Name', 'Games Played', 'Wins', 'Draws', 'Losses', 'Average Rating', 'Win Rate']
-                st.dataframe(display_stats, use_container_width=True)
+                # display_stats.columns = ['Opening Name', 'Games Played', 'Wins', 'Draws', 'Losses', 'Average Rating', 'Win Rate']
+                # st.dataframe(display_stats, use_container_width=True)
+                render_opening_stats(opening_stats.head(20))
             else:
                 st.info("No opening statistics available for this selection.")
             
