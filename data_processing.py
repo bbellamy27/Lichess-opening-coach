@@ -149,7 +149,8 @@ def get_opening_stats(df, color=None):
         wins=('result', lambda x: (x == 'Win').sum()),
         draws=('result', lambda x: (x == 'Draw').sum()),
         losses=('result', lambda x: (x == 'Loss').sum()),
-        avg_rating=('user_rating', 'mean')
+        avg_rating=('user_rating', 'mean'),
+        eco=('eco', 'first')  # Take the first ECO code associated with this opening name
     ).reset_index()
     
     # Calculate Win Rate

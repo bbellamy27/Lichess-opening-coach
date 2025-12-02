@@ -325,7 +325,18 @@ else:
                 
                 # Sort by Win Rate desc, then Games desc
                 best = significant.sort_values(['win_rate', 'games'], ascending=[False, False]).iloc[0]
-                return f"{best['opening_name']} ({best['win_rate']:.0%})"
+                
+                # Format: "ECO: Opening Name (Win%)"
+                # Truncate opening name if too long to avoid fading
+                name = best['opening_name']
+                if len(name) > 20:
+                    name = name[:18] + "..."
+                
+                eco = best.get('eco', '')
+                if eco:
+                    return f"{eco}: {name} ({best['win_rate']:.0%})"
+                else:
+                    return f"{name} ({best['win_rate']:.0%})"
 
             best_white = get_best_opening(white_stats)
             best_black = get_best_opening(black_stats)

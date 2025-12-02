@@ -16,7 +16,7 @@ def render_game_list(df):
     <style>
         .game-row {
             display: grid;
-            grid-template-columns: 50px 2fr 1fr 1fr 1fr 1fr 100px;
+            grid-template-columns: 50px 2fr 1fr 60px 1fr 1fr 1fr 100px;
             align-items: center;
             background-color: #302e2b;
             padding: 10px;
@@ -134,6 +134,7 @@ def render_game_list(df):
         <div>Type</div>
         <div>Players</div>
         <div style="text-align: center;">Result</div>
+        <div style="text-align: center;">ECO</div>
         <div style="text-align: center;">Review</div>
         <div style="text-align: center;">Accuracy</div>
         <div style="text-align: center;">Moves</div>
@@ -193,6 +194,9 @@ def render_game_list(df):
             game_id = row.get('game_id', '')
             game_url = f"https://lichess.org/{game_id}"
             
+            # ECO
+            eco = row.get('eco', '')
+
             st.markdown(textwrap.dedent(f"""
             <div class="game-row">
                 <div class="game-icon">{icon}<br><span style="font-size: 10px;">{speed}</span></div>
@@ -210,6 +214,9 @@ def render_game_list(df):
                 </div>
                 <div class="result-column">
                     <span class="{badge_class}">{badge_text}</span>
+                </div>
+                <div style="text-align: center;">
+                    <span style="color: #a7a6a2; font-size: 12px;">{eco}</span>
                 </div>
                 <div style="text-align: center;">
                     <a href="{game_url}" target="_blank" class="review-btn">Review</a>
