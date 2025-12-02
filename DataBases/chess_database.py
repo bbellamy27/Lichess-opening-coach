@@ -33,6 +33,8 @@ class ChessDatabaseManager:
         self.metadata = self.db.metadata
         self.checkpoints = self.db.import_checkpoints
         
+        self.studies = self.db.studies
+        
         logger.info(f"Connected to MongoDB: {database_name}")
     
     def setup_timeseries_collection(self):
@@ -71,6 +73,9 @@ class ChessDatabaseManager:
         # Openings
         self.openings.create_index([("eco_code", ASCENDING)], unique=True)
         self.openings.create_index([("total_games", DESCENDING)])
+        
+        # Studies
+        self.studies.create_index([("name", ASCENDING)], unique=True)
         
         logger.info("Indexes created successfully")
     
@@ -151,7 +156,60 @@ class ChessDatabaseManager:
             return result.upserted_count + result.modified_count
         except BulkWriteError as e:
             return len(operations) - len(e.details['writeErrors'])
-    
+            
+    # --- Personal Studies Methods ---
+    def create_study(self, name: str, description: str = "") -> ObjectId:
+        """Create a new study"""
+        study = {
+            "name": name,
+            "description": description,
+            "game_ids": [],
+            "created_at": datetime.now(),
+            "updated_at": datetime.now()
+        }
+        try:
+            result = self.studies.insert_one(study)
+            return result.inserted_id
+        except Exception as e:
+            logger.error(f"Error creating study: {e}")
+            return None
+
+    def get_studies(self) -> List[Dict]:
+        """Get all studies"""
+        return list(self.studies.find().sort("updated_at", DESCENDING))
+
+    def add_games_to_study(self, study_id: ObjectId, game_ids: List[ObjectId]) -> int:
+        """Add games to a study"""
+        try:
+            result = self.studies.update_one(
+                {"_id": study_id},
+                {
+                    "$addToSet": {"game_ids": {"$each": game_ids}},
+                    "$set": {"updated_at": datetime.now()}
+                }
+            )
+            return result.modified_count
+        except Exception as e:
+            logger.error(f"Error adding games to study: {e}")
+            return 0
+
+    def get_games_in_study(self, study_id: ObjectId) -> List[Dict]:
+        """Get all games in a study"""
+        study = self.studies.find_one({"_id": study_id})
+        if not study or not study.get("game_ids"):
+            return []
+        
+        return list(self.games.find({"_id": {"$in": study["game_ids"]}}))
+
+    def delete_study(self, study_id: ObjectId) -> bool:
+        """Delete a study"""
+        try:
+            result = self.studies.delete_one({"_id": study_id})
+            return result.deleted_count > 0
+        except Exception as e:
+            logger.error(f"Error deleting study: {e}")
+            return False
+
     def close(self):
         """Close database connection"""
         self.client.close()

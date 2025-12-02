@@ -393,6 +393,94 @@ else:
             
             if selected_game_ids:
                 st.markdown("---")
+                
+                # --- Personal Studies Integration ---
+                if MONGODB_AVAILABLE:
+                    with st.expander("📁 Save to Personal Study"):
+                        try:
+                            db_manager = ChessDatabaseManager()
+                            studies = db_manager.get_studies()
+                            study_names = [s['name'] for s in studies]
+                            
+                            c1, c2 = st.columns([2, 1])
+                            with c1:
+                                selected_study = st.selectbox("Select Study", ["Create New..."] + study_names)
+                            
+                            new_study_name = ""
+                            if selected_study == "Create New...":
+                                with c2:
+                                    new_study_name = st.text_input("New Study Name")
+                            
+                            if st.button("💾 Save Selected Games"):
+                                with st.spinner("Saving to database..."):
+                                    # 1. Get/Create Study ID
+                                    study_id = None
+                                    if selected_study == "Create New...":
+                                        if new_study_name:
+                                            study_id = db_manager.create_study(new_study_name)
+                                        else:
+                                            st.error("Please enter a name for the new study.")
+                                    else:
+                                        study = next((s for s in studies if s['name'] == selected_study), None)
+                                        if study:
+                                            study_id = study['_id']
+                                    
+                                    if study_id:
+                                        # 2. Process Games
+                                        parser = OptimizedPGNParser(db_manager)
+                                        added_game_ids = []
+                                        
+                                        for game_id in selected_game_ids:
+                                            # Find game in dataframe
+                                            game_idx = df[df['game_id'] == game_id].index[0]
+                                            row = df.loc[game_idx]
+                                            
+                                            # Construct PGN for parser
+                                            pgn_text = f"""
+[Event "Lichess Game"]
+[Site "https://lichess.org/{game_id}"]
+[Date "{row['date'].strftime('%Y.%m.%d')}"]
+[White "{row['white_user']}"]
+[Black "{row['black_user']}"]
+[Result "{row['result']}"]
+[WhiteElo "{row['white_rating']}"]
+[BlackElo "{row['black_rating']}"]
+[ECO "{row.get('eco', '?')}"]
+[Opening "{row['opening_name']}"]
+[TimeControl "{row['speed']}"]
+
+{row['moves']}
+"""
+                                            # Parse and Insert
+                                            game_data = parser.parse_game(pgn_text)
+                                            if game_data:
+                                                # Insert into DB (returns ID if exists or new)
+                                                # Note: bulk_insert_games expects a list, but we can use insert_one logic or just use bulk with 1 item
+                                                # But parser doesn't expose insert_one. 
+                                                # We can use db_manager.games.insert_one directly or modify parser.
+                                                # Actually, let's just use the parser's logic but we need to get the inserted ID.
+                                                # parser.parse_game returns the dict, it doesn't insert.
+                                                # We need to insert it.
+                                                
+                                                # Check if game already exists to avoid duplicates?
+                                                # The parser logic doesn't check for duplicates in parse_game, but bulk_insert might.
+                                                # Let's check if game exists by site/date/players?
+                                                # For simplicity, we'll just insert. MongoDB _id will be unique.
+                                                
+                                                # We need to insert and get the ID.
+                                                res = db_manager.games.insert_one(game_data)
+                                                added_game_ids.append(res.inserted_id)
+                                        
+                                        # 3. Add to Study
+                                        if added_game_ids:
+                                            count = db_manager.add_games_to_study(study_id, added_game_ids)
+                                            st.success(f"Saved {count} games to study!")
+                                        else:
+                                            st.warning("No valid games could be processed.")
+                                            
+                        except Exception as e:
+                            st.error(f"Database Error: {e}")
+
                 if st.button(f"Analyze {len(selected_game_ids)} Selected Game(s)"):
                     engine = LocalEngine()
                     progress_bar = st.progress(0)
@@ -879,7 +967,53 @@ else:
                     
                     st.divider()
                     
-                    # 3. Analytics Dashboard
+                    # 3. My Studies Manager
+                    st.markdown("### 📁 My Studies")
+                    studies = db_manager.get_studies()
+                    
+                    if not studies:
+                        st.info("No studies found. Create one in the 'Recent Games' tab!")
+                    else:
+                        for study in studies:
+                            with st.expander(f"📚 {study['name']} ({len(study.get('game_ids', []))} games)"):
+                                c1, c2, c3 = st.columns([2, 1, 1])
+                                with c1:
+                                    st.write(f"Created: {study['created_at'].strftime('%Y-%m-%d')}")
+                                    if study.get('description'):
+                                        st.write(study['description'])
+                                
+                                with c2:
+                                    # Export PGN
+                                    if st.button("Export PGN", key=f"export_{study['_id']}"):
+                                        games = db_manager.get_games_in_study(study['_id'])
+                                        pgn_content = ""
+                                        for g in games:
+                                            pgn_content += f'[Event "{g.get("event", "Lichess Game")}"]\n'
+                                            pgn_content += f'[Site "{g.get("site", "?")}"]\n'
+                                            pgn_content += f'[Date "{g.get("date").strftime("%Y.%m.%d") if g.get("date") else "?"}"]\n'
+                                            pgn_content += f'[White "{g.get("white", "?")}"]\n'
+                                            pgn_content += f'[Black "{g.get("black", "?")}"]\n'
+                                            pgn_content += f'[Result "{g.get("result", "*")}"]\n'
+                                            pgn_content += f'[ECO "{g.get("eco_code", "?")}"]\n'
+                                            pgn_content += f'\n{g.get("moves", "")}\n\n'
+                                        
+                                        st.download_button(
+                                            label="⬇️ Download PGN",
+                                            data=pgn_content,
+                                            file_name=f"{study['name']}.pgn",
+                                            mime="text/plain",
+                                            key=f"dl_{study['_id']}"
+                                        )
+
+                                with c3:
+                                    if st.button("Delete Study", key=f"del_{study['_id']}"):
+                                        if db_manager.delete_study(study['_id']):
+                                            st.success("Deleted!")
+                                            st.rerun()
+
+                    st.divider()
+                    
+                    # 4. Analytics Dashboard
                     st.markdown("### 📊 Database Analytics")
                     analytics = ChessAnalytics(db_manager)
                     
