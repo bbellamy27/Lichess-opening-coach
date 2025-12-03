@@ -237,7 +237,7 @@ def render_game_list(df):
 
 def render_opening_stats(stats):
     """
-    Render opening statistics in a clean table.
+    Render opening statistics table body (headers handled externally for interactivity).
     """
     if stats.empty:
         st.info("No opening stats available.")
@@ -250,19 +250,20 @@ def render_opening_stats(stats):
             border-collapse: collapse;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
             color: #e6edf3;
+            table-layout: fixed; /* Enforce fixed widths */
         }
+        /* Headers are now external, but we keep this for safety */
         .opening-table th {
-            text-align: left;
-            padding: 12px;
-            background-color: #262522;
-            border-bottom: 2px solid #403d39;
-            color: #a7a6a2;
-            font-weight: 600;
+            display: none; 
         }
         .opening-table td {
             padding: 12px;
             border-bottom: 1px solid #403d39;
             background-color: #302e2b;
+            vertical-align: middle;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         .opening-table tr:hover td {
             background-color: #383531;
@@ -274,7 +275,7 @@ def render_opening_stats(stats):
         .stat-bar-container {
             display: flex;
             height: 6px;
-            width: 100px;
+            width: 100%; /* Full width of cell */
             background-color: #403d39;
             border-radius: 3px;
             overflow: hidden;
@@ -286,19 +287,18 @@ def render_opening_stats(stats):
     </style>
     """), unsafe_allow_html=True)
     
-    html = textwrap.dedent("""
-    <table class="opening-table">
-        <thead>
-            <tr>
-                <th>Opening</th>
-                <th>Games</th>
-                <th>Performance</th>
-                <th>Win Rate</th>
-            </tr>
-        </thead>
-        <tbody>
-    """)
+    # Helper to clean HTML and remove indentation
+    def clean_html(html_str):
+        return "".join(line.strip() for line in html_str.split("\n"))
+
+    # Build HTML string (No THEAD)
+    html_content = f"""
+    <div style="border-radius: 8px; overflow: hidden; border: 1px solid #403d39; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <table class="opening-table">
+            <tbody>
+    """
     
+    rows_html = ""
     for index, row in stats.iterrows():
         name = row['opening_name']
         games = row['games']
@@ -312,26 +312,33 @@ def render_opening_stats(stats):
         draw_pct = (draws / games) * 100
         loss_pct = (losses / games) * 100
         
-        html += textwrap.dedent(f"""
-        <tr>
-            <td><span class="opening-name">{name}</span></td>
-            <td>{games}</td>
-            <td>
-                <div style="display: flex; gap: 5px; align-items: center;">
-                    <span style="font-size: 12px; color: #a7a6a2;">{wins}W {draws}D {losses}L</span>
-                </div>
-                <div class="stat-bar-container">
-                    <div class="stat-bar-win" style="width: {win_pct}%;"></div>
-                    <div class="stat-bar-draw" style="width: {draw_pct}%;"></div>
-                    <div class="stat-bar-loss" style="width: {loss_pct}%;"></div>
-                </div>
-            </td>
-            <td>{win_rate:.1%}</td>
-        </tr>
-        """)
+        rows_html += f"""
+            <tr>
+                <td style="width: 40%;"><span class="opening-name" title="{name}">{name}</span></td>
+                <td style="width: 15%;">{games}</td>
+                <td style="width: 30%;">
+                    <div style="display: flex; gap: 5px; align-items: center; margin-bottom: 4px;">
+                        <span style="font-size: 11px; color: #a7a6a2; font-family: monospace;">{wins}W-{draws}D-{losses}L</span>
+                    </div>
+                    <div class="stat-bar-container">
+                        <div class="stat-bar-win" style="width: {win_pct}%;"></div>
+                        <div class="stat-bar-draw" style="width: {draw_pct}%;"></div>
+                        <div class="stat-bar-loss" style="width: {loss_pct}%;"></div>
+                    </div>
+                </td>
+                <td style="width: 15%; font-weight: bold; color: {
+                    '#00E676' if win_rate > 0.51 else 
+                    '#FFD600' if win_rate >= 0.45 else 
+                    '#FF1744'
+                };">{win_rate:.1%}</td>
+            </tr>
+        """
         
-    html += textwrap.dedent("""
-        </tbody>
-    </table>
-    """)
-    st.markdown(html, unsafe_allow_html=True)
+    end_html = """
+            </tbody>
+        </table>
+    </div>
+    """
+    
+    full_html = clean_html(html_content + rows_html + end_html)
+    st.markdown(full_html, unsafe_allow_html=True)

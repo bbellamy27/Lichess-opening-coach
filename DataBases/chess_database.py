@@ -36,6 +36,17 @@ class ChessDatabaseManager:
         self.studies = self.db.studies
         
         logger.info(f"Connected to MongoDB: {database_name}")
+
+    @property
+    def connected(self) -> bool:
+        """Check if database is connected"""
+        try:
+            # Fast check: just ensure client is initialized
+            # For a real check, we'd ping, but that's slow.
+            # We rely on get_stats for the deep check.
+            return self.client is not None
+        except:
+            return False
     
     def setup_timeseries_collection(self):
         """Create time-series collection for rating history"""
@@ -209,6 +220,117 @@ class ChessDatabaseManager:
         except Exception as e:
             logger.error(f"Error deleting study: {e}")
             return False
+
+    def get_stats(self) -> Dict:
+        """Get basic database statistics"""
+        try:
+            # Check connection
+            self.client.admin.command('ping')
+            game_count = self.games.count_documents({})
+            return {
+                "status": "Connected",
+                "games": game_count
+            }
+        except Exception:
+            return {
+                "status": "Disconnected",
+                "games": 0
+            }
+
+    def save_games(self, df) -> int:
+        """Save games from DataFrame to MongoDB"""
+        if df.empty:
+            return 0
+            
+        games_to_insert = []
+        for _, row in df.iterrows():
+            # Get Player IDs
+            white_id = self.get_or_create_player(row['white_user'], row['white_rating'], row['date'])
+            black_id = self.get_or_create_player(row['black_user'], row['black_rating'], row['date'])
+            
+            # Construct Game Document
+            game_doc = {
+                "game_id": row['game_id'], # Lichess ID
+                "site": f"https://lichess.org/{row['game_id']}",
+                "date": row['date'],
+                "white_player_id": white_id,
+                "black_player_id": black_id,
+                "white": row['white_user'],
+                "black": row['black_user'],
+                "white_elo": row['white_rating'],
+                "black_elo": row['black_rating'],
+                "result": row['result'],
+                "eco_code": row.get('eco'),
+                "opening_name": row['opening_name'],
+                "time_control": row['speed'],
+                "moves": row['moves'],
+                "created_at": datetime.now()
+            }
+            games_to_insert.append(game_doc)
+            
+        # Bulk Insert (ignoring duplicates by game_id if we had a unique index on it, 
+        # but we don't have a unique index on game_id yet, only compound. 
+        # Let's add a check or just insert. 
+        # Ideally we should have a unique index on game_id.
+        # For now, we'll just insert.
+        return self.bulk_insert_games(games_to_insert)
+
+    def load_games(self, username: str, limit: int = 100):
+        """Load games for a user from MongoDB into DataFrame"""
+        import pandas as pd
+        
+        # Find player
+        player = self.players.find_one({"username": username})
+        if not player:
+            return pd.DataFrame()
+            
+        player_id = player["_id"]
+        
+        # Query games where player is white or black
+        query = {
+            "$or": [
+                {"white_player_id": player_id},
+                {"black_player_id": player_id}
+            ]
+        }
+        
+        cursor = self.games.find(query).sort("date", DESCENDING).limit(limit)
+        games = list(cursor)
+        
+        if not games:
+            return pd.DataFrame()
+            
+        # Convert to DataFrame format expected by app
+        processed_games = []
+        for g in games:
+            # Determine user color
+            if g['white_player_id'] == player_id:
+                user_color = 'white'
+                user_rating = g['white_elo']
+                opponent_rating = g['black_elo']
+            else:
+                user_color = 'black'
+                user_rating = g['black_elo']
+                opponent_rating = g['white_elo']
+                
+            processed_games.append({
+                'game_id': g.get('game_id'),
+                'date': g['date'],
+                'user_color': user_color,
+                'user_rating': user_rating,
+                'opponent_rating': opponent_rating,
+                'result': g['result'],
+                'opening_name': g.get('opening_name'),
+                'eco': g.get('eco_code'),
+                'moves': g.get('moves'),
+                'speed': g.get('time_control'),
+                'white_user': g.get('white'),
+                'black_user': g.get('black'),
+                'white_rating': g.get('white_elo'),
+                'black_rating': g.get('black_elo')
+            })
+            
+        return pd.DataFrame(processed_games)
 
     def close(self):
         """Close database connection"""
