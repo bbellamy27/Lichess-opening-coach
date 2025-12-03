@@ -4,6 +4,7 @@ All-in-one file for easy deployment
 """
 
 import logging
+import os
 from pymongo import MongoClient, ASCENDING, DESCENDING, UpdateOne
 from pymongo.errors import BulkWriteError
 from typing import Dict, List, Optional
@@ -19,9 +20,12 @@ class ChessDatabaseManager:
     
     def __init__(
         self,
-        connection_string: str = "mongodb://localhost:27017/",
+        connection_string: str = None,
         database_name: str = "chess_analysis"
     ):
+        if connection_string is None:
+            connection_string = os.getenv("MONGODB_URI", "mongodb://localhost:27017/")
+            
         self.client = MongoClient(connection_string, maxPoolSize=100)
         self.db = self.client[database_name]
         
@@ -327,7 +331,8 @@ class ChessDatabaseManager:
                 'white_user': g.get('white'),
                 'black_user': g.get('black'),
                 'white_rating': g.get('white_elo'),
-                'black_rating': g.get('black_elo')
+                'black_rating': g.get('black_elo'),
+                'ply_count': len(g.get('moves', '').split()) if g.get('moves') else 0
             })
             
         return pd.DataFrame(processed_games)

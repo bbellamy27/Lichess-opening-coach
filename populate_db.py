@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from api_client import LichessClient
 from data_processing import process_games
-from database import ChessDatabaseManager
+from DataBases.chess_database import ChessDatabaseManager
 import pandas as pd
 
 # Load environment variables
@@ -52,7 +52,7 @@ def populate_database():
     stats = db.get_stats()
     print(f"\nCurrent Database Stats:")
     print(f"   Games: {stats['games']}")
-    print(f"   Players: {stats['players']}")
+    print(f"   Games: {stats['games']}")
 
 if __name__ == "__main__":
     populate_database()

@@ -120,6 +120,48 @@ class ChessDatabaseManager:
         # Ensure date is datetime
         df['date'] = pd.to_datetime(df['date'])
         
+        # Calculate derived columns if missing
+        if 'hour' not in df.columns:
+            df['hour'] = df['date'].dt.hour
+            
+        if 'day_of_week' not in df.columns:
+            df['day_of_week'] = df['date'].dt.day_name()
+            
+        if 'ply_count' not in df.columns:
+            df['ply_count'] = df['moves'].apply(lambda x: len(x.split()) if isinstance(x, str) else 0)
+            
+        # Ensure other columns exist with defaults
+        required_cols = {
+            'variant': 'standard',
+            'termination': 'Normal',
+            'acpl': None,
+            'eco': '',
+            'opening_name': 'Unknown'
+        }
+        
+        for col, default in required_cols.items():
+            if col not in df.columns:
+                df[col] = default
+
+        # Calculate opponent_rating_bin
+        if 'opponent_rating_bin' not in df.columns:
+            def get_bin(rating):
+                if pd.isna(rating): return "Unknown"
+                try:
+                    r = int(rating)
+                    if r < 1000: return "<1000"
+                    elif 1000 <= r < 1200: return "1000-1200"
+                    elif 1200 <= r < 1400: return "1200-1400"
+                    elif 1400 <= r < 1600: return "1400-1600"
+                    elif 1600 <= r < 1800: return "1600-1800"
+                    elif 1800 <= r < 2000: return "1800-2000"
+                    elif 2000 <= r < 2200: return "2000-2200"
+                    else: return "2200+"
+                except:
+                    return "Unknown"
+            
+            df['opponent_rating_bin'] = df['opponent_rating'].apply(get_bin)
+        
         logger.info(f"Loaded {len(df)} games for {username} from MongoDB.")
         return df
 

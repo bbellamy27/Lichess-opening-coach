@@ -13,6 +13,26 @@ from groq_client import GroqClient
 import os
 from dotenv import load_dotenv
 from ui import render_game_list, render_opening_stats
+import traceback
+from datetime import datetime
+
+def log_error(e, context="Global"):
+    """Log exception to a text file in Debug directory."""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    error_file = f"Debug/error_{timestamp}.txt"
+    
+    # Ensure Debug directory exists
+    if not os.path.exists("Debug"):
+        os.makedirs("Debug")
+        
+    with open(error_file, "w", encoding="utf-8") as f:
+        f.write(f"Error Timestamp: {timestamp}\n")
+        f.write(f"Context: {context}\n")
+        f.write("-" * 50 + "\n")
+        f.write(traceback.format_exc())
+        
+    st.error(f"⚠️ An error occurred in {context}! Details logged to `{error_file}`")
+    st.info("Please share this error file with the developer.")
 
 # --- Helper Functions ---
 def get_opening_perspective(u_color, op_name, op_role=None):
@@ -293,6 +313,9 @@ with col_load:
             with st.spinner(f"Loading games for {username} from DB..."):
                 df = db.load_games(username, limit=num_games)
                 if not df.empty:
+                    # Remove duplicates to prevent UI errors
+                    df = df.drop_duplicates(subset=['game_id'])
+                    
                     # Re-process / Re-calculate stats
                     # Note: df is already processed, but we need to regenerate stats
                     opening_stats = get_opening_stats(df)
@@ -483,7 +506,39 @@ if 'game_data' in st.session_state:
         # Handle "All" (500) or specific limit
         limit = games_per_page if games_per_page != 500 else len(df)
         
-        selected_game_ids = render_game_list(df.head(limit))
+        # Defensive check for ply_count (handles stale session state)
+        if 'ply_count' not in df.columns:
+            df['ply_count'] = df['moves'].apply(lambda x: len(x.split()) if isinstance(x, str) else 0)
+            
+        # Defensive checks for other derived columns (hour, day_of_week, opponent_rating_bin)
+        if 'hour' not in df.columns:
+            df['hour'] = df['date'].dt.hour
+            
+        if 'day_of_week' not in df.columns:
+            df['day_of_week'] = df['date'].dt.day_name()
+            
+        if 'opponent_rating_bin' not in df.columns:
+            def get_bin(rating):
+                if pd.isna(rating): return "Unknown"
+                try:
+                    r = int(rating)
+                    if r < 1000: return "<1000"
+                    elif 1000 <= r < 1200: return "1000-1200"
+                    elif 1200 <= r < 1400: return "1200-1400"
+                    elif 1400 <= r < 1600: return "1400-1600"
+                    elif 1600 <= r < 1800: return "1600-1800"
+                    elif 1800 <= r < 2000: return "1800-2000"
+                    elif 2000 <= r < 2200: return "2000-2200"
+                    else: return "2200+"
+                except:
+                    return "Unknown"
+            df['opponent_rating_bin'] = df['opponent_rating'].apply(get_bin)
+        
+        try:
+            selected_game_ids = render_game_list(df.head(limit))
+        except Exception as e:
+            log_error(e, "Game List Rendering")
+            selected_game_ids = []
         
         if selected_game_ids:
             st.markdown("---")
@@ -995,75 +1050,78 @@ if 'game_data' in st.session_state:
         if not df.empty:
             st.subheader("Deep Dive Analytics")
             
-            # --- Row 1: Personality Radar & Move Times ---
-            col1, col2 = st.columns([1, 1])
-            
-            with col1:
-                # Prepare Radar Data
-                # We need 5 metrics on 0-10 scale
+            try:
+                # --- Row 1: Personality Radar & Move Times ---
+                col1, col2 = st.columns([1, 1])
                 
-                # 1. Aggression (Risk Score)
-                aggression = risk_data['score'] if risk_data else 5
-                
-                # 2. Speed (Pacing Score)
-                speed = pacing_data['score'] if pacing_data else 5
-                
-                # 3. Accuracy (Inverted ACPL)
-                # 0 ACPL = 10, 100 ACPL = 0
-                accuracy = 5
-                if analysis_stats:
-                    acpl = analysis_stats['avg_acpl']
-                    accuracy = max(0, min(10, 10 - (acpl / 10)))
+                with col1:
+                    # Prepare Radar Data
+                    # We need 5 metrics on 0-10 scale
                     
-                # 4. Opening Knowledge (Opening Phase Score)
-                opening_know = 5
-                if analysis_stats:
-                    opening_know = analysis_stats['phases']['Opening']['score']
+                    # 1. Aggression (Risk Score)
+                    aggression = risk_data['score'] if risk_data else 5
                     
-                # 5. Endgame Skill (Endgame Phase Score)
-                endgame_skill = 5
-                if analysis_stats:
-                    endgame_skill = analysis_stats['phases']['Endgame']['score']
+                    # 2. Speed (Pacing Score)
+                    speed = pacing_data['score'] if pacing_data else 5
                     
-                radar_data = {
-                    'categories': ['Aggression', 'Speed', 'Accuracy', 'Opening Prep', 'Endgame Skill'],
-                    'values': [aggression, speed, accuracy, opening_know, endgame_skill]
-                }
-                
-                st.plotly_chart(plot_radar_chart(radar_data), use_container_width=True)
-                
-            with col2:
-                # Move Time Histogram
-                if time_stats and time_stats.get('raw_times'):
-                    fig = plot_move_time_distribution(time_stats['raw_times'])
-                    if fig:
-                        st.plotly_chart(fig, use_container_width=True)
+                    # 3. Accuracy (Inverted ACPL)
+                    # 0 ACPL = 10, 100 ACPL = 0
+                    accuracy = 5
+                    if analysis_stats:
+                        acpl = analysis_stats['avg_acpl']
+                        accuracy = max(0, min(10, 10 - (acpl / 10)))
+                        
+                    # 4. Opening Knowledge (Opening Phase Score)
+                    opening_know = 5
+                    if analysis_stats:
+                        opening_know = analysis_stats['phases']['Opening']['score']
+                        
+                    # 5. Endgame Skill (Endgame Phase Score)
+                    endgame_skill = 5
+                    if analysis_stats:
+                        endgame_skill = analysis_stats['phases']['Endgame']['score']
+                        
+                    radar_data = {
+                        'categories': ['Aggression', 'Speed', 'Accuracy', 'Opening Prep', 'Endgame Skill'],
+                        'values': [aggression, speed, accuracy, opening_know, endgame_skill]
+                    }
+                    
+                    st.plotly_chart(plot_radar_chart(radar_data), use_container_width=True)
+                    
+                with col2:
+                    # Move Time Histogram
+                    if time_stats and time_stats.get('raw_times'):
+                        fig = plot_move_time_distribution(time_stats['raw_times'])
+                        if fig:
+                            st.plotly_chart(fig, use_container_width=True)
+                        else:
+                            st.info("Move time data unavailable.")
                     else:
                         st.info("Move time data unavailable.")
-                else:
-                    st.info("Move time data unavailable.")
-
-            st.divider()
-            
-            # --- Row 2: Opening Sunburst ---
-            st.subheader("Opening Repertoire Map")
-            st.plotly_chart(plot_opening_sunburst(df), use_container_width=True)
-            
-            st.divider()
-
-            # --- Row 3: Existing Heatmaps ---
-            col3, col4 = st.columns(2)
-            with col3:
-                # Heatmap of playing times
-                st.plotly_chart(plot_time_heatmap(df), use_container_width=True)
-                # Pie chart of game terminations
-                st.plotly_chart(plot_termination_pie(df), use_container_width=True)
-            with col4:
-                # Win rate vs Opponent Rating
-                st.plotly_chart(plot_opponent_scatter(df), use_container_width=True)
+    
+                st.divider()
                 
-                # Correlation Heatmap
-                st.plotly_chart(plot_correlation_heatmap(df), use_container_width=True)
+                # --- Row 2: Opening Sunburst ---
+                st.subheader("Opening Repertoire Map")
+                st.plotly_chart(plot_opening_sunburst(df), use_container_width=True)
+                
+                st.divider()
+    
+                # --- Row 3: Existing Heatmaps ---
+                col3, col4 = st.columns(2)
+                with col3:
+                    # Heatmap of playing times
+                    st.plotly_chart(plot_time_heatmap(df), use_container_width=True)
+                    # Pie chart of game terminations
+                    st.plotly_chart(plot_termination_pie(df), use_container_width=True)
+                with col4:
+                    # Win rate vs Opponent Rating
+                    st.plotly_chart(plot_opponent_scatter(df), use_container_width=True)
+                    
+                    # Correlation Heatmap
+                    st.plotly_chart(plot_correlation_heatmap(df), use_container_width=True)
+            except Exception as e:
+                log_error(e, "Advanced Insights Tab")
         else:
             st.info(f"No games available for **{rating_category}**. Play some games to see stats!")
             
