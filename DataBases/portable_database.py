@@ -217,6 +217,10 @@ class PortableDatabaseManager:
             # SQLite stores dates as strings usually, need to convert back
             df['date'] = pd.to_datetime(df['date'])
             
+            # Map 'time_control' back to 'speed' for app compatibility
+            if 'time_control' in df.columns:
+                df['speed'] = df['time_control']
+            
             # Add user_color, user_rating, opponent_rating
             def enrich_row(row):
                 if row['white_user'] == username:
