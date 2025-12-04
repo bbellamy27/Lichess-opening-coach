@@ -726,6 +726,15 @@ def calculate_analysis_metrics(games, username, pacing_label="Balanced"):
                 player_analysis = game.get('black_analysis', {})
                 
         if player_analysis:
+            # Ensure it's a dict (handle JSON string from DB)
+            if isinstance(player_analysis, str):
+                try:
+                    import json
+                    player_analysis = json.loads(player_analysis)
+                except:
+                    player_analysis = {}
+
+        if player_analysis:
             total_acpl += player_analysis.get('acpl', 0)
             acpl_count += 1
             total_blunders += player_analysis.get('blunder', 0)
