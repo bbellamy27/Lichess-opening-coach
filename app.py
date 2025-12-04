@@ -1369,9 +1369,18 @@ if 'game_data' in st.session_state:
         else:
             # 1. Connection Status
             try:
-                db_manager = ChessDatabaseManager()
-                stats = db_manager.db.command("dbStats")
-                st.success(f"✅ Connected to MongoDB (Size: {stats['dataSize'] / 1024 / 1024:.2f} MB)")
+            # 1. Connection Status
+            try:
+                # Use global db instance (which might be Portable)
+                db_manager = db 
+                
+                if isinstance(db_manager, PortableDatabaseManager):
+                    stats = db_manager.get_stats()
+                    st.success(f"✅ Connected to Portable Database (Games: {stats['games']})")
+                else:
+                    # MongoDB Stats
+                    stats = db_manager.db.command("dbStats")
+                    st.success(f"✅ Connected to MongoDB (Size: {stats['dataSize'] / 1024 / 1024:.2f} MB)")
                 
                 # 2. Ingestion UI
                 st.markdown("### 📥 Ingest PGN Data")
