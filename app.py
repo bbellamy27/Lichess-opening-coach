@@ -177,7 +177,6 @@ def get_db_manager_v3():
         print(f"MongoDB connection failed: {e}")
     
     # Fallback to Portable
-    st.toast("MongoDB not found. Using Portable Database (SQLite).", icon="📂")
     return PortableDatabaseManager()
 
 @st.cache_data(ttl=60)
@@ -187,6 +186,10 @@ def get_db_stats(_db):
     return {'status': 'Disconnected', 'games': 0}
 
 db = get_db_manager_v3()
+
+# Show toast if using Portable Database (only once per session ideally, but here is fine)
+if isinstance(db, PortableDatabaseManager):
+    st.toast("MongoDB not found. Using Portable Database (SQLite).", icon="📂")
 # Add a 'connected' property to the manager if not present, or handle it
 if not hasattr(db, 'connected'):
     # Simple check or assume connected if no error
