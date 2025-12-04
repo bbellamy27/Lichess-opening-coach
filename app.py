@@ -1369,8 +1369,6 @@ if 'game_data' in st.session_state:
         else:
             # 1. Connection Status
             try:
-            # 1. Connection Status
-            try:
                 # Use global db instance (which might be Portable)
                 db_manager = db 
                 
