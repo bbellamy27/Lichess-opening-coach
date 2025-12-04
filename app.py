@@ -165,36 +165,6 @@ st.sidebar.header("Settings")
 username = st.sidebar.text_input("Lichess Username", value="DrNykterstein")
 num_games = st.sidebar.slider("Select number of recent Lichess games to analyze.", min_value=10, max_value=500, value=100)
 
-# Database Settings
-with st.sidebar.expander("🔌 Database Settings"):
-    current_uri = os.getenv("MONGODB_URI", "")
-    new_uri = st.text_input("MongoDB Connection String", value=current_uri, type="password", help="Paste your MongoDB Atlas connection string here.")
-    
-    if st.button("Save Connection"):
-        if new_uri:
-            # Update .env file
-            env_path = ".env"
-            # Read existing lines
-            lines = []
-            if os.path.exists(env_path):
-                with open(env_path, "r") as f:
-                    lines = f.readlines()
-            
-            # Remove existing MONGODB_URI
-            lines = [l for l in lines if not l.startswith("MONGODB_URI=")]
-            
-            # Add new URI
-            lines.append(f"MONGODB_URI={new_uri}\n")
-            
-            # Write back
-            with open(env_path, "w") as f:
-                f.writelines(lines)
-                
-            st.success("Saved! Reloading...")
-            import time
-            time.sleep(1)
-            st.rerun()
-
 # Database Connection (Cached)
 @st.cache_resource
 def get_db_manager_v3():
