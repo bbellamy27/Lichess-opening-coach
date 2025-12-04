@@ -16,7 +16,7 @@ from ui import render_game_list, render_opening_stats
 import traceback
 from datetime import datetime
 
-def log_error(e, context="Global"):
+def log_error(e, context="Global", show_ui=True):
     """Log exception to a text file in Debug directory."""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     error_file = f"Debug/error_{timestamp}.txt"
@@ -31,8 +31,9 @@ def log_error(e, context="Global"):
         f.write("-" * 50 + "\n")
         f.write(traceback.format_exc())
         
-    st.error(f"⚠️ An error occurred in {context}! Details logged to `{error_file}`")
-    st.info("Please share this error file with the developer.")
+    if show_ui:
+        st.error(f"⚠️ An error occurred in {context}! Details logged to `{error_file}`")
+        st.info("Please share this error file with the developer.")
 
 # --- Helper Functions ---
 def get_opening_perspective(u_color, op_name, op_role=None):
@@ -57,6 +58,7 @@ try:
     from DataBases.chess_database import ChessDatabaseManager
     from DataBases.chess_parser import OptimizedPGNParser
     from DataBases.chess_analytics import ChessAnalytics
+    from DataBases.portable_database import PortableDatabaseManager
     MONGODB_AVAILABLE = True
 except ImportError:
     MONGODB_AVAILABLE = False
@@ -165,8 +167,18 @@ num_games = st.sidebar.slider("Select number of recent Lichess games to analyze.
 
 # Database Connection (Cached)
 @st.cache_resource
-def get_db_manager_v2():
-    return ChessDatabaseManager()
+def get_db_manager_v3():
+    # Try MongoDB first
+    try:
+        mongo_db = ChessDatabaseManager()
+        if mongo_db.connected:
+            return mongo_db
+    except Exception as e:
+        print(f"MongoDB connection failed: {e}")
+    
+    # Fallback to Portable
+    st.toast("MongoDB not found. Using Portable Database (SQLite).", icon="📂")
+    return PortableDatabaseManager()
 
 @st.cache_data(ttl=60)
 def get_db_stats(_db):
@@ -174,7 +186,7 @@ def get_db_stats(_db):
         return _db.get_stats()
     return {'status': 'Disconnected', 'games': 0}
 
-db = get_db_manager_v2()
+db = get_db_manager_v3()
 # Add a 'connected' property to the manager if not present, or handle it
 if not hasattr(db, 'connected'):
     # Simple check or assume connected if no error
@@ -189,20 +201,9 @@ if not hasattr(db, 'connected'):
 # I need to add `connected` property to ChessDatabaseManager or wrap it.
 # Let's check app.py again. Line 168: `if db.connected:`
 # So `ChessDatabaseManager` MUST have a `connected` property or attribute.
-# I didn't see it in `chess_database.py` view (lines 1-50).
-# Let me check `chess_database.py` again to be sure.
-# If it's missing, I need to add it.
-# But if it was working before, maybe I missed it.
-# Or maybe it was added in a previous turn that I didn't see fully?
-# I'll assume I need to add it if missing.
-
-# For now, I will implement the caching in app.py and assume 'connected' exists or I will add it.
-# Actually, let's check chess_database.py first.
 
 # AI Provider Selection
 ai_provider = st.sidebar.selectbox("AI Provider", ["Free Llama (Default)", "Google Gemini", "Groq (Llama 3)"])
-
-# Dynamic API Key Input
 if ai_provider == "Google Gemini":
     api_key = st.sidebar.text_input("Google API Key", type="password", help="Get it from aistudio.google.com")
     if api_key:
@@ -311,40 +312,197 @@ with col_load:
     if st.button("💾 Load from Database"):
         if db.connected:
             with st.spinner(f"Loading games for {username} from DB..."):
-                df = db.load_games(username, limit=num_games)
-                if not df.empty:
-                    # Remove duplicates to prevent UI errors
-                    df = df.drop_duplicates(subset=['game_id'])
-                    
-                    # Re-process / Re-calculate stats
-                    # Note: df is already processed, but we need to regenerate stats
-                    opening_stats = get_opening_stats(df)
-                    
-                    # Calculate Player Metrics
-                    total_games = len(df)
-                    win_count = len(df[df['result'] == 'Win'])
-                    loss_count = len(df[df['result'] == 'Loss'])
-                    draw_count = len(df[df['result'] == 'Draw'])
-                    win_rate = win_count / total_games if total_games > 0 else 0
-                    current_rating = df.iloc[0]['user_rating'] if not df.empty else 'N/A'
+                try:
+                    df = db.load_games(username, limit=num_games)
+                    if not df.empty:
+                        # Remove duplicates to prevent UI errors
+                        df = df.drop_duplicates(subset=['game_id'])
+                        
+                        # Re-process / Re-calculate stats
+                        # Note: df is already processed, but we need to regenerate stats
+                        opening_stats = get_opening_stats(df)
+                        
+                        # Calculate Player Metrics
+                        total_games = len(df)
+                        win_count = len(df[df['result'] == 'Win'])
+                        loss_count = len(df[df['result'] == 'Loss'])
+                        draw_count = len(df[df['result'] == 'Draw'])
+                        win_rate = win_count / total_games if total_games > 0 else 0
+                        current_rating = df.iloc[0]['user_rating'] if not df.empty else 'N/A'
 
-                    player_stats = {
-                        'username': username,
-                        'total_games': total_games,
-                        'current_rating': current_rating,
-                        'win_rate': win_rate
-                    }
-                    
-                    st.session_state['game_data'] = df
-                    st.session_state['opening_stats'] = opening_stats
-                    st.session_state['player_stats'] = player_stats
-                    st.session_state['raw_games'] = df.to_dict('records') # Approximation
-                    
-                    st.success(f"Loaded {len(df)} games from DB!")
-                else:
-                    st.warning("No games found in DB for this user.")
+                        player_stats = {
+                            'username': username,
+                            'total_games': total_games,
+                            'current_rating': current_rating,
+                            'win_rate': win_rate
+                        }
+                        
+                        st.session_state['game_data'] = df
+                        st.session_state['opening_stats'] = opening_stats
+                        st.session_state['player_stats'] = player_stats
+                        st.session_state['raw_games'] = df.to_dict('records') # Approximation
+                        
+                        # --- Automatic Enrichment (Check & Repair) ---
+                        # Identify games with missing clocks/analysis
+                        missing_ids = []
+                        for _, row in df.iterrows():
+                            clocks = row.get('clocks')
+                            has_clocks = isinstance(clocks, list) and len(clocks) > 0
+                            if not has_clocks:
+                                missing_ids.append(row['game_id'])
+                        
+                        if missing_ids:
+                            st.info(f"Fetching missing stats for {len(missing_ids)} games from Lichess... (One-time update)")
+                            
+                            client = LichessClient()
+                            chunk_size = 200
+                            updated_count = 0
+                            progress_bar = st.progress(0)
+                            
+                            # Create a map to update local DF immediately
+                            updates_map = {}
+                            
+                            for i in range(0, len(missing_ids), chunk_size):
+                                chunk = missing_ids[i:i + chunk_size]
+                                fetched_games = client.get_games_by_ids(chunk)
+                                
+                                for game_data in fetched_games:
+                                    updates = {
+                                        'clocks': game_data.get('clocks', []),
+                                        'clock': game_data.get('clock', {}),
+                                        'analysis': game_data.get('analysis', []),
+                                        'white_analysis': game_data.get('players', {}).get('white', {}).get('analysis', {}),
+                                        'black_analysis': game_data.get('players', {}).get('black', {}).get('analysis', {})
+                                    }
+                                    
+                                    # Update DB
+                                    if db.update_game(game_data['id'], updates):
+                                        updated_count += 1
+                                        updates_map[game_data['id']] = updates
+                                
+                                progress_bar.progress(min((i + len(chunk)) / len(missing_ids), 1.0))
+                            
+                            progress_bar.empty()
+                            
+                            if updated_count > 0:
+                                # Apply updates to current session state DF so user sees them immediately
+                                for idx, row in df.iterrows():
+                                    gid = row['game_id']
+                                    if gid in updates_map:
+                                        u = updates_map[gid]
+                                        df.at[idx, 'clocks'] = u['clocks']
+                                        df.at[idx, 'clock'] = u['clock']
+                                        df.at[idx, 'analysis'] = u['analysis']
+                                        df.at[idx, 'white_analysis'] = u['white_analysis']
+                                        df.at[idx, 'black_analysis'] = u['black_analysis']
+                                
+                                # Update session state again
+                                st.session_state['game_data'] = df
+                                st.session_state['raw_games'] = df.to_dict('records')
+                                st.success(f"Loaded {len(df)} games and repaired {updated_count} records!")
+                            else:
+                                st.success(f"Loaded {len(df)} games from DB!")
+                        else:
+                            st.success(f"Loaded {len(df)} games from DB!")
+
+                        # --- Automatic Local Analysis (for games missing Lichess analysis) ---
+                        # Identify games that still have no analysis (even after Lichess fetch)
+                        games_needing_analysis = []
+                        for _, row in df.iterrows():
+                            analysis = row.get('analysis')
+                            has_analysis = isinstance(analysis, list) and len(analysis) > 0
+                            if not has_analysis:
+                                games_needing_analysis.append(row)
+                        
+                        if games_needing_analysis:
+                            # Limit to 5 most recent games to avoid freezing
+                            games_to_analyze = games_needing_analysis[:5]
+                            count_needed = len(games_needing_analysis)
+                            count_doing = len(games_to_analyze)
+                            
+                            st.info(f"Running local engine analysis for {count_doing} recent games (out of {count_needed} missing)...")
+                            
+                            engine = LocalEngine()
+                            progress_bar = st.progress(0)
+                            local_updates_map = {}
+                            
+                            for i, row in enumerate(games_to_analyze):
+                                moves_str = row.get('moves', '')
+                                if moves_str:
+                                    moves_list = moves_str.split()
+                                    try:
+                                        # Analyze
+                                        acpl_data = engine.analyze_game(moves_list)
+                                        
+                                        # Prepare Updates
+                                        updates = {
+                                            'analysis': acpl_data.get('analysis', []),
+                                            'white_analysis': {'acpl': int(acpl_data['white_acpl'])},
+                                            'black_analysis': {'acpl': int(acpl_data['black_acpl'])}
+                                        }
+                                        
+                                        # Update DB
+                                        # Use extracted ID logic if needed, but row['game_id'] should be correct now
+                                        if db.update_game(row['game_id'], updates):
+                                            local_updates_map[row['game_id']] = updates
+                                            
+                                    except Exception as e:
+                                        print(f"Auto-Analysis Error for {row['game_id']}: {e}")
+                                
+                                progress_bar.progress((i + 1) / count_doing)
+                            
+                            progress_bar.empty()
+                            
+                            if local_updates_map:
+                                # Apply updates to current session state DF
+                                # Ensure 'players' column exists
+                                if 'players' not in df.columns:
+                                    df['players'] = None
+                                    df['players'] = df['players'].astype('object')
+
+                                for idx, row in df.iterrows():
+                                    gid = row['game_id']
+                                    if gid in local_updates_map:
+                                        u = local_updates_map[gid]
+                                        df.at[idx, 'analysis'] = u['analysis']
+                                        
+                                        # Reconstruct 'players' dict for this row
+                                        players = row.get('players')
+                                        if not isinstance(players, dict):
+                                            # Rebuild basic structure
+                                            players = {
+                                                'white': {'user': {'name': row['white_user']}, 'rating': row['white_rating'], 'analysis': {}},
+                                                'black': {'user': {'name': row['black_user']}, 'rating': row['black_rating'], 'analysis': {}}
+                                            }
+                                        
+                                        # Update ACPL
+                                        if 'white' not in players: players['white'] = {}
+                                        if 'analysis' not in players['white']: players['white']['analysis'] = {}
+                                        players['white']['analysis']['acpl'] = u['white_analysis']['acpl']
+                                        
+                                        if 'black' not in players: players['black'] = {}
+                                        if 'analysis' not in players['black']: players['black']['analysis'] = {}
+                                        players['black']['analysis']['acpl'] = u['black_analysis']['acpl']
+                                        
+                                        # Use at to set the object
+                                        df.at[idx, 'players'] = players
+                                        
+                                        # Also update flat columns if we use them
+                                        df.at[idx, 'white_analysis'] = u['white_analysis']
+                                        df.at[idx, 'black_analysis'] = u['black_analysis']
+
+                                # Update session state again
+                                st.session_state['game_data'] = df
+                                st.session_state['raw_games'] = df.to_dict('records')
+                                st.success(f"Analyzed {len(local_updates_map)} games locally!")
+                            
+                    else:
+                        st.warning("No games found in DB for this user.")
+                except Exception as e:
+                    st.error(f"Error loading from database: {e}")
+                    print(f"DB Load Error: {e}")
         else:
-            st.error("Database not connected.")
+            st.error("Database not connected. Please ensure MongoDB is running.")
 
     # Calculate Accuracy Button (Single/Multi Select)
     # This is now handled in the main view for better UX
@@ -487,7 +645,7 @@ if 'game_data' in st.session_state:
     time_stats = None
 
     # --- Tabs for Analysis Sections ---
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Data Overview", "📈 Basic EDA", "🧠 Advanced Insights", "🤖 AI Coach", "🌍 Global Database"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Data Overview", "📈 Basic EDA", "🧠 Advanced Insights", "🤖 AI Coach", "📥 Game Vault Upload"])
     
     # Tab 1: Raw Data Tables
     with tab1:
@@ -617,7 +775,7 @@ if 'game_data' in st.session_state:
                                             # For simplicity, we'll just insert. MongoDB _id will be unique.
                                             
                                             # We need to insert and get the ID.
-                                            res = db_manager.games.insert_one(game_data)
+                                            res = db_manager.insert_game(game_data)
                                             added_game_ids.append(res.inserted_id)
                                     
                                     # 3. Add to Study
@@ -646,13 +804,28 @@ if 'game_data' in st.session_state:
                             # 1. Analyze
                             acpl_data = engine.analyze_game(moves_list)
                             
-                            # 2. Update Data
+                            # 2. Update Data in DataFrame
                             if row['user_color'] == 'white':
                                 my_acpl = int(acpl_data['white_acpl'])
                                 df.at[game_idx, 'acpl'] = my_acpl
                             else:
                                 my_acpl = int(acpl_data['black_acpl'])
                                 df.at[game_idx, 'acpl'] = my_acpl
+                                
+                            # 2b. Update Data in Session State (Raw Games) for Metrics
+                            # Find the game object in raw_games
+                            for g in st.session_state['raw_games']:
+                                if g['id'] == game_id:
+                                    # Update Analysis List (for Phase Analysis)
+                                    g['analysis'] = acpl_data.get('analysis', [])
+                                    
+                                    # Update Player ACPL (for Accuracy)
+                                    if 'analysis' not in g['players']['white']: g['players']['white']['analysis'] = {}
+                                    if 'analysis' not in g['players']['black']: g['players']['black']['analysis'] = {}
+                                    
+                                    g['players']['white']['analysis']['acpl'] = int(acpl_data['white_acpl'])
+                                    g['players']['black']['analysis']['acpl'] = int(acpl_data['black_acpl'])
+                                    break
                                 
                             # 3. Generate AI Report
                             # Construct a prompt for the AI
@@ -1002,7 +1175,7 @@ if 'game_data' in st.session_state:
                     st.markdown(phase_card("Endgame", phases.get('Endgame', {}), pacing_data['label']), unsafe_allow_html=True)
                     
             else:
-                st.info("No analysis data available. Request a computer analysis on Lichess for your games to see accuracy stats.")
+                st.info("No analysis data available. Click the **'Analyze Selected Game(s)'** button in the sidebar to run a local engine analysis and generate these stats.")
             
             st.divider()
 
@@ -1050,8 +1223,8 @@ if 'game_data' in st.session_state:
         if not df.empty:
             st.subheader("Deep Dive Analytics")
             
+            # --- Row 1: Personality Radar & Move Times ---
             try:
-                # --- Row 1: Personality Radar & Move Times ---
                 col1, col2 = st.columns([1, 1])
                 
                 with col1:
@@ -1098,16 +1271,28 @@ if 'game_data' in st.session_state:
                             st.info("Move time data unavailable.")
                     else:
                         st.info("Move time data unavailable.")
+            except Exception as e:
+                st.warning("Not enough data for metrics.")
+                log_error(e, "Advanced Insights - Row 1", show_ui=False)
     
-                st.divider()
-                
-                # --- Row 2: Opening Sunburst ---
+            st.divider()
+            
+            # --- Row 2: Opening Sunburst ---
+            try:
                 st.subheader("Opening Repertoire Map")
-                st.plotly_chart(plot_opening_sunburst(df), use_container_width=True)
+                fig = plot_opening_sunburst(df)
+                if fig:
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.info("Not enough data for Repertoire Map (need >2 games per opening).")
+            except Exception as e:
+                st.warning("Not enough data for metrics.")
+                log_error(e, "Advanced Insights - Row 2", show_ui=False)
                 
-                st.divider()
-    
-                # --- Row 3: Existing Heatmaps ---
+            st.divider()
+
+            # --- Row 3: Existing Heatmaps ---
+            try:
                 col3, col4 = st.columns(2)
                 with col3:
                     # Heatmap of playing times
@@ -1119,9 +1304,14 @@ if 'game_data' in st.session_state:
                     st.plotly_chart(plot_opponent_scatter(df), use_container_width=True)
                     
                     # Correlation Heatmap
-                    st.plotly_chart(plot_correlation_heatmap(df), use_container_width=True)
+                    fig_corr = plot_correlation_heatmap(df)
+                    if fig_corr:
+                        st.plotly_chart(fig_corr, use_container_width=True)
+                    else:
+                        st.info("Not enough numeric data for correlation.")
             except Exception as e:
-                log_error(e, "Advanced Insights Tab")
+                st.warning("Not enough data for metrics.")
+                log_error(e, "Advanced Insights - Row 3", show_ui=False)
         else:
             st.info(f"No games available for **{rating_category}**. Play some games to see stats!")
             
@@ -1168,7 +1358,8 @@ if 'game_data' in st.session_state:
     
     # Tab 5: Global Database (MongoDB)
     with tab5:
-        st.subheader("🌍 Global Chess Database (MongoDB)")
+        st.subheader("Game Vault Upload")
+        st.markdown("Our app automatically syncs your games from Lichess, but if you’d like to upload games from other platforms, you can import them manually using the PGN Upload tool.")
         
         if not MONGODB_AVAILABLE:
             st.error("❌ MongoDB modules not found. Please ensure `DataBases/` folder exists and `pymongo` is installed.")
@@ -1244,48 +1435,7 @@ if 'game_data' in st.session_state:
 
                 st.divider()
                 
-                # 4. Analytics Dashboard
-                st.markdown("### 📊 Database Analytics")
-                analytics = ChessAnalytics(db_manager)
-                
-                # A. Overview Metrics
-                db_stats = analytics.get_database_stats()
-                c1, c2, c3, c4 = st.columns(4)
-                c1.metric("Total Games", db_stats['games'])
-                c2.metric("Players", db_stats['players'])
-                c3.metric("Openings", db_stats['openings'])
-                c4.metric("Rating History", db_stats['rating_history'])
-                
-                # B. Rating Volatility (Query 1)
-                st.markdown("#### 1. Rating Volatility Analysis")
-                volatility_data = analytics.get_rating_volatility()
-                if volatility_data:
-                    v_df = pd.DataFrame(volatility_data)
-                    fig_vol = go.Figure(data=[
-                        go.Scatter(x=v_df['avg_rating'], y=v_df['volatility_ratio'], mode='markers', text=v_df['username'], name='Players')
-                    ])
-                    fig_vol.update_layout(title="Rating Volatility vs Average Rating", xaxis_title="Average Rating", yaxis_title="Volatility Ratio")
-                    st.plotly_chart(fig_vol, use_container_width=True)
-                
-                # C. Time Control Performance (Query 2)
-                st.markdown("#### 2. Performance by Time Control")
-                tc_data = analytics.get_performance_by_time_control()
-                if tc_data:
-                    tc_df = pd.DataFrame(tc_data)
-                    fig_tc = go.Figure(data=[
-                        go.Bar(name='White Win %', x=tc_df['time_control'], y=tc_df['white_win_rate']),
-                        go.Bar(name='Black Win %', x=tc_df['time_control'], y=tc_df['black_win_rate']),
-                        go.Bar(name='Draw %', x=tc_df['time_control'], y=tc_df['draw_rate'])
-                    ])
-                    fig_tc.update_layout(barmode='stack', title="Win Rates by Time Control")
-                    st.plotly_chart(fig_tc, use_container_width=True)
-                
-                # D. Opening Success (Query 3)
-                st.markdown("#### 3. Top Openings by Success Rate")
-                opening_data = analytics.get_opening_success_rates(min_games=50)
-                if opening_data:
-                    op_df = pd.DataFrame(opening_data)
-                    st.dataframe(op_df[['eco_code', 'opening_name', 'total_games', 'white_advantage', 'avg_rating']], use_container_width=True)
+
 
             except Exception as e:
                 st.error(f"❌ Connection Error: {e}")

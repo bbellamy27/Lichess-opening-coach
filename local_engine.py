@@ -1,14 +1,36 @@
 from stockfish import Stockfish
 import os
 
+import platform
+import shutil
+
 class LocalEngine:
-    def __init__(self, path="stockfish.exe"):
-        self.path = path
+    def __init__(self, path=None):
+        if path is None:
+            # Auto-detect default path based on OS
+            system = platform.system()
+            if system == "Windows":
+                self.path = "stockfish.exe"
+            else:
+                # Linux/Mac: Check if 'stockfish' is in PATH or local folder
+                if shutil.which("stockfish"):
+                    self.path = "stockfish"
+                elif os.path.exists("./stockfish"):
+                    self.path = "./stockfish"
+                else:
+                    self.path = "stockfish" # Fallback
+        else:
+            self.path = path
+            
         self.engine = None
         
     def _init_engine(self):
-        if not os.path.exists(self.path):
-            raise FileNotFoundError(f"Stockfish executable not found at {self.path}")
+        if not shutil.which(self.path) and not os.path.exists(self.path):
+             # Try to find it in current directory if not found
+             if os.path.exists(os.path.join(os.getcwd(), self.path)):
+                 self.path = os.path.join(os.getcwd(), self.path)
+             else:
+                raise FileNotFoundError(f"Stockfish executable not found. Please install Stockfish and ensure it is in your PATH or the project directory.")
             
         # Initialize Stockfish with reasonable settings for quick analysis
         self.engine = Stockfish(path=self.path, depth=15, parameters={"Threads": 2, "Hash": 16})
@@ -32,6 +54,7 @@ class LocalEngine:
         black_loss = 0
         white_moves = 0
         black_moves = 0
+        analysis_list = []
         
         # We need to replay the game
         # Note: Stockfish library usually takes moves in coordinate notation (e.g. "e2e4")
@@ -42,10 +65,18 @@ class LocalEngine:
         for i, move_san in enumerate(moves_san):
             # 1. Get eval before move
             self.engine.set_fen_position(board.fen())
-            eval_before = self.engine.get_evaluation()
             
-            # Convert eval to centipawns (cap at 1000)
-            score_before = self._parse_eval(eval_before)
+            # Use get_top_moves to force a search and get accurate eval
+            top_moves = self.engine.get_top_moves(1)
+            if top_moves:
+                info = top_moves[0]
+                if info.get('Mate') is not None:
+                    score_before = 1000 if info['Mate'] > 0 else -1000
+                else:
+                    score_before = int(info.get('Centipawn', 0))
+                    score_before = max(-1000, min(1000, score_before))
+            else:
+                score_before = 0
             
             # 2. Make move
             try:
@@ -53,28 +84,18 @@ class LocalEngine:
             except ValueError:
                 break
                 
-            # 3. Get best move eval (what engine would have done)
-            # Actually, ACPL is difference between your move's eval and best move's eval.
-            # But we already have the eval *before* the move (which represents the best possible position).
-            # We need the eval *after* the move, but from the perspective of the same player?
-            # No, standard ACPL definition:
-            # Eval(BestMove) - Eval(PlayedMove)
-            
-            # So we need:
-            # A. Eval of position BEFORE move (Best possible eval)
-            # B. Eval of position AFTER move (Actual eval)
-            
-            # Wait, if I am White:
-            # Position is +0.5.
-            # I play a move.
-            # New position (Black to move) is +0.3.
-            # That means I lost 0.2 (20 cp).
-            
-            # So we just need to track the eval swing.
-            
+            # 3. Get eval after move
             self.engine.set_fen_position(board.fen())
-            eval_after = self.engine.get_evaluation()
-            score_after = self._parse_eval(eval_after)
+            top_moves = self.engine.get_top_moves(1)
+            if top_moves:
+                info = top_moves[0]
+                if info.get('Mate') is not None:
+                    score_after = 1000 if info['Mate'] > 0 else -1000
+                else:
+                    score_after = int(info.get('Centipawn', 0))
+                    score_after = max(-1000, min(1000, score_after))
+            else:
+                score_after = 0
             
             # Calculate Loss
             # If White moved (i is even):
@@ -126,19 +147,29 @@ class LocalEngine:
             
             # Let's try this heuristic.
             
+            # Calculate Loss
             loss = score_before + score_after
-            loss = max(0, loss) # Loss cannot be negative (unless you found a move better than engine saw at depth 15)
+            loss = max(0, loss) # Loss cannot be negative
             
-            if i % 2 == 0: # White
+            # Store analysis data (Lichess format: always White perspective)
+            # score_after is relative to side-to-move (the side that DID NOT just move)
+            if i % 2 == 0: # White just moved, now Black to move
                 white_loss += loss
                 white_moves += 1
-            else: # Black
+                # Engine score is Black's perspective -> Negate for White
+                analysis_eval = -score_after
+            else: # Black just moved, now White to move
                 black_loss += loss
                 black_moves += 1
+                # Engine score is White's perspective -> Keep as is
+                analysis_eval = score_after
+                
+            analysis_list.append({'eval': analysis_eval})
                 
         return {
             'white_acpl': white_loss / white_moves if white_moves else 0,
-            'black_acpl': black_loss / black_moves if black_moves else 0
+            'black_acpl': black_loss / black_moves if black_moves else 0,
+            'analysis': analysis_list
         }
 
     def _parse_eval(self, eval_dict):

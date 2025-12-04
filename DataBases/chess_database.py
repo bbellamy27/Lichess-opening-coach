@@ -26,7 +26,8 @@ class ChessDatabaseManager:
         if connection_string is None:
             connection_string = os.getenv("MONGODB_URI", "mongodb://localhost:27017/")
             
-        self.client = MongoClient(connection_string, maxPoolSize=100)
+        # Set a shorter timeout (5s) so we don't hang if DB is down
+        self.client = MongoClient(connection_string, maxPoolSize=100, serverSelectionTimeoutMS=5000)
         self.db = self.client[database_name]
         
         # Collections
@@ -43,13 +44,12 @@ class ChessDatabaseManager:
 
     @property
     def connected(self) -> bool:
-        """Check if database is connected"""
+        """Check if database is connected by pinging it"""
         try:
-            # Fast check: just ensure client is initialized
-            # For a real check, we'd ping, but that's slow.
-            # We rely on get_stats for the deep check.
-            return self.client is not None
-        except:
+            # Real check: ping the server
+            self.client.admin.command('ping')
+            return True
+        except Exception:
             return False
     
     def setup_timeseries_collection(self):
@@ -268,6 +268,11 @@ class ChessDatabaseManager:
                 "opening_name": row['opening_name'],
                 "time_control": row['speed'],
                 "moves": row['moves'],
+                "clocks": row.get('clocks', []),
+                "clock": row.get('clock_settings', {}),
+                "analysis": row.get('analysis', []),
+                "white_analysis": row.get('white_analysis', {}),
+                "black_analysis": row.get('black_analysis', {}),
                 "created_at": datetime.now()
             }
             games_to_insert.append(game_doc)
@@ -278,6 +283,22 @@ class ChessDatabaseManager:
         # Ideally we should have a unique index on game_id.
         # For now, we'll just insert.
         return self.bulk_insert_games(games_to_insert)
+
+    def insert_game(self, game_data: Dict):
+        """Insert a single game and return result with inserted_id (Compatibility wrapper)"""
+        return self.games.insert_one(game_data)
+
+    def update_game(self, game_id: str, updates: Dict) -> bool:
+        """Update a game document with new fields"""
+        try:
+            result = self.games.update_one(
+                {"game_id": game_id},
+                {"$set": updates}
+            )
+            return result.modified_count > 0
+        except Exception as e:
+            logger.error(f"Error updating game {game_id}: {e}")
+            return False
 
     def load_games(self, username: str, limit: int = 100):
         """Load games for a user from MongoDB into DataFrame"""
@@ -317,8 +338,13 @@ class ChessDatabaseManager:
                 user_rating = g['black_elo']
                 opponent_rating = g['white_elo']
                 
+            # Extract ID from site if missing
+            g_id = g.get('game_id') or g.get('id')
+            if not g_id and g.get('site'):
+                g_id = g.get('site').split('/')[-1]
+
             processed_games.append({
-                'game_id': g.get('game_id'),
+                'game_id': g_id,
                 'date': g['date'],
                 'user_color': user_color,
                 'user_rating': user_rating,
@@ -332,7 +358,13 @@ class ChessDatabaseManager:
                 'black_user': g.get('black'),
                 'white_rating': g.get('white_elo'),
                 'black_rating': g.get('black_elo'),
-                'ply_count': len(g.get('moves', '').split()) if g.get('moves') else 0
+                'ply_count': len(g.get('moves', '').split()) if isinstance(g.get('moves'), str) else len(g.get('moves', [])),
+                # Raw Data for Metrics
+                'clocks': g.get('clocks', []),
+                'clock': g.get('clock', {}),
+                'analysis': g.get('analysis', []),
+                'white_analysis': g.get('white_analysis', {}),
+                'black_analysis': g.get('black_analysis', {})
             })
             
         return pd.DataFrame(processed_games)

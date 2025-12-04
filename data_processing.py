@@ -115,7 +115,13 @@ def process_games(games, username):
             'white_rating': white_rating,
             'black_rating': black_rating,
             'acpl': game.get('players', {}).get(user_color, {}).get('analysis', {}).get('acpl'),
-            'moves': moves
+            'moves': moves,
+            # Raw Data for Metrics (Time & Accuracy)
+            'clocks': game.get('clocks', []),
+            'clock_settings': game.get('clock', {}),
+            'analysis': game.get('analysis', []),
+            'white_analysis': game.get('players', {}).get('white', {}).get('analysis', {}),
+            'black_analysis': game.get('players', {}).get('black', {}).get('analysis', {})
         })
         
     # Convert list of dicts to DataFrame
@@ -439,7 +445,12 @@ def calculate_time_stats(games, username, time_control="overall", pacing_label="
             continue
             
         # Determine user color and index (White=0, Black=1)
-        white_user = game.get('players', {}).get('white', {}).get('user', {}).get('name', 'Unknown')
+        players = game.get('players') or {}
+        white_user = players.get('white', {}).get('user', {}).get('name')
+        
+        if not white_user:
+            white_user = game.get('white_user', 'Unknown')
+            
         user_color = chess.WHITE if white_user.lower() == username.lower() else chess.BLACK
         user_index = 0 if user_color == chess.WHITE else 1
         
@@ -694,12 +705,26 @@ def calculate_analysis_metrics(games, username, pacing_label="Balanced"):
         analyzed_games += 1
         
         # Determine user color
-        white_user = game.get('players', {}).get('white', {}).get('user', {}).get('name', 'Unknown')
+        # Robustly handle 'players' dict or fallback to flat fields
+        players = game.get('players') or {}
+        white_user = players.get('white', {}).get('user', {}).get('name')
+        
+        if not white_user:
+            white_user = game.get('white_user', 'Unknown')
+            
         user_color = chess.WHITE if white_user.lower() == username.lower() else chess.BLACK
         user_color_str = 'white' if user_color == chess.WHITE else 'black'
         
         # Overall Stats from Player Summary
-        player_analysis = game.get('players', {}).get(user_color_str, {}).get('analysis', {})
+        player_analysis = players.get(user_color_str, {}).get('analysis', {})
+        
+        # Fallback to flat analysis fields if nested not found
+        if not player_analysis:
+            if user_color == chess.WHITE:
+                player_analysis = game.get('white_analysis', {})
+            else:
+                player_analysis = game.get('black_analysis', {})
+                
         if player_analysis:
             total_acpl += player_analysis.get('acpl', 0)
             acpl_count += 1
@@ -715,6 +740,11 @@ def calculate_analysis_metrics(games, username, pacing_label="Balanced"):
             continue
             
         board = chess.Board()
+        
+        # Initialize game-specific counters
+        game_blunders = 0
+        game_mistakes = 0
+        game_inaccuracies = 0
         
         # Iterate moves and analysis
         for i, move_san in enumerate(moves_san):
@@ -757,9 +787,15 @@ def calculate_analysis_metrics(games, username, pacing_label="Balanced"):
                             
                     loss = min(loss, 1000) # Cap at 1000
                     
+                    # Classify Error
                     if loss >= 300: # Blunder threshold
                         phases[phase]['blunders'] += 1
+                        game_blunders += 1
                         is_blunder = True
+                    elif loss >= 100:
+                        game_mistakes += 1
+                    elif loss >= 50:
+                        game_inaccuracies += 1
                         
                     phases[phase]['loss'] += loss
                     phases[phase]['moves'] += 1
@@ -773,6 +809,16 @@ def calculate_analysis_metrics(games, username, pacing_label="Balanced"):
                 break
                 
             total_moves += 1 if is_user_move else 0
+
+        # Update Totals (Use manual counts if API data missing)
+        if player_analysis and player_analysis.get('blunder') is not None:
+            total_blunders += player_analysis.get('blunder', 0)
+            total_mistakes += player_analysis.get('mistake', 0)
+            total_inaccuracies += player_analysis.get('inaccuracy', 0)
+        else:
+            total_blunders += game_blunders
+            total_mistakes += game_mistakes
+            total_inaccuracies += game_inaccuracies
 
     if acpl_count == 0:
         return None

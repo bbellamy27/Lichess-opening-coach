@@ -48,7 +48,12 @@ def plot_rating_trend(df):
     fig.update_layout(
         plot_bgcolor=COLORS['Background'],
         paper_bgcolor=COLORS['Background'],
-        font_color=COLORS['Text']
+        font_color=COLORS['Text'],
+        xaxis_title="Date",
+        yaxis_title="User Rating",
+        xaxis=dict(
+            tickformat="%B %d %H:%M"  # e.g. September 03 14:30
+        )
     )
     return fig
 
@@ -209,6 +214,18 @@ def plot_correlation_heatmap(df):
     df_corr['result_numeric'] = df_corr['result'].map(result_map)
     
     cols = ['user_rating', 'opponent_rating', 'ply_count', 'result_numeric']
+    
+    # Enforce numeric types
+    for col in cols:
+        if col in df_corr.columns:
+            df_corr[col] = pd.to_numeric(df_corr[col], errors='coerce')
+            
+    # Drop rows with NaNs in these columns
+    df_corr = df_corr.dropna(subset=cols)
+    
+    if df_corr.empty:
+        return None
+        
     corr_matrix = df_corr[cols].corr()
     
     # Rename for better display
@@ -306,6 +323,9 @@ def plot_opening_sunburst(df):
     
     # Filter for readability (remove rare openings)
     df_sun = df_sun[df_sun['count'] > 2]
+    
+    if df_sun.empty:
+        return None
     
     fig = px.sunburst(df_sun, path=['user_color', 'opening_name'], values='count',
                       title="Opening Repertoire",

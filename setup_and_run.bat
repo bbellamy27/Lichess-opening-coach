@@ -4,7 +4,13 @@ echo ==========================================
 echo   Chess Improvement Coach for Lichess - One-Click Setup
 echo ==========================================
 
-REM 1. Check if Python is installed
+REM 1. Check if virtual environment exists
+if exist ".venv\Scripts\python.exe" (
+    echo [INFO] Found local virtual environment.
+    goto :activate_venv
+)
+
+REM 2. Check if Python is installed (only if venv doesn't exist)
 python --version >nul 2>&1
 if %errorlevel% neq 0 (
     echo [ERROR] Python is not installed or not in your PATH.
@@ -20,6 +26,7 @@ if not exist ".venv" (
     python -m venv .venv
 )
 
+:activate_venv
 REM 3. Activate virtual environment and install dependencies
 echo [INFO] Checking dependencies...
 call .venv\Scripts\activate
