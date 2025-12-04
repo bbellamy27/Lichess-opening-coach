@@ -24,7 +24,8 @@ class ChessDatabaseManager:
         database_name: str = "chess_analysis"
     ):
         if connection_string is None:
-            connection_string = os.getenv("MONGODB_URI", "mongodb://localhost:27017/")
+            # Default to Cloud DB if env var not set (for laptop portability)
+            connection_string = os.getenv("MONGODB_URI", "mongodb+srv://Ruptzy:8215081ha@cluster0.a5pcgru.mongodb.net/?appName=Cluster0")
             
         # Set a shorter timeout (5s) so we don't hang if DB is down
         self.client = MongoClient(connection_string, maxPoolSize=100, serverSelectionTimeoutMS=5000)
